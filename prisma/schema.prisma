@@ -1,0 +1,294 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  name          String?
+  image         String?
+  isDemo        Boolean   @default(false)
+  accounts      Account[]
+  sessions      Session[]
+  profile       Profile?
+  meals         Meal[]
+  weightEntries WeightEntry[]
+  goals         Goal[]
+  promptConfig  PromptConfig?
+  insights      InsightEvent[]
+  coachMessages CoachMessage[]
+  coachState    CoachState?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  dayContexts   DayContext[]
+  daySummaries  CalendarDaySummary[]
+  healthReports HealthReport[]
+}
+
+model Profile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sex            String?  // male, female
+  birthDate      DateTime?
+  age            Int?
+  heightCm       Float?
+  currentWeight  Float?
+  targetWeight   Float?
+  activityLevel  String?  // sedentary, light, moderate, active, athlete
+  goalType       String?  // fat_loss, maintenance, muscle_gain, strength, recomp, health
+  secondaryFocus String?  // JSON array of secondary focuses
+  weeklyPace     Float?   // kg per week
+  maintenanceCal Int?
+  targetCal      Int?
+  proteinTarget  Int?
+  carbTarget     Int?
+  fatTarget      Int?
+  onboarded      Boolean  @default(false)
+  unitSystem     String   @default("metric") // metric, imperial
+  dietaryPrefs   String?  // JSON string of preferences
+
+  allergies      String?  // JSON string of allergies
+  timezone       String   @default("UTC")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Meal {
+  id               String              @id @default(cuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String              // breakfast, lunch, dinner, snack
+  title            String?             // Short AI-generated title
+  description      String?
+  photoUrl         String?
+  photoKey         String?
+  mealTime         DateTime
+  items            MealItem[]
+  snapshots        NutritionSnapshot[]
+  activeSnapshotId String?
+  isAnalyzing      Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model MealItem {
+  id           String  @id @default(cuid())
+  mealId       String
+  meal         Meal    @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  name         String
+  portionDesc  String?
+  gramsEst     Float?
+  calories     Int?
+  protein      Float?
+  carbs        Float?
+  fat          Float?
+  fiber        Float?
+  sugar        Float?
+  confidence   Float?
+  isProcessed  Boolean @default(false)
+  alternatives String? // JSON string of alternative interpretations
+}
+
+model NutritionSnapshot {
+  id          String   @id @default(cuid())
+  mealId      String
+  meal        Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  version     String   // ai_v1, ai_v2, user_final
+  calories    Int
+  protein     Float
+  carbs       Float
+  fat         Float
+  fiber       Float?
+  sugar       Float?
+  sodium      Float?
+  // Micronutrients (in mg unless noted)
+  vitaminD    Float?   // mcg
+  vitaminC    Float?
+  vitaminB12  Float?   // mcg
+  iron        Float?
+  calcium     Float?
+  magnesium   Float?
+  zinc        Float?
+  potassium   Float?
+  // Quality metrics
+  qualityScore Float?
+  isUltraProcessed Boolean?
+  // Metadata
+  confidence  Float
+  notes       String?  // JSON string of notes
+  followUps   String?  // JSON string of follow-up questions
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weight    Float
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Goal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyCal  Int
+  proteinG  Int?
+  carbsG    Int?
+  fatG      Int?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model PromptConfig {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  textPrompt  String?
+  imagePrompt String?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model InsightEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // pattern, suggestion, alert
+  category    String   // eating_pattern, nutrient_deficit, goal_progress
+  title       String
+  description String
+  data        String?  // JSON string of additional data
+  actionUrl   String?
+  dismissed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ============================================================================
+// COACH CHAT (AI Supervisor)
+// ============================================================================
+
+model CoachMessage {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String   // "coach" | "user"
+  type        String   // "reflection" | "reply" | "question"
+  content     String
+  date        String   // YYYY-MM-DD (for grouping by day)
+  daySnapshot String?  // JSON: { calories, protein, carbs, fat, mealCount, meals[] }
+  createdAt   DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([userId, createdAt])
+}
+
+model CoachState {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReflectionDate   String?  // YYYY-MM-DD
+  hasUnread            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model DayContext {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey    String   // "YYYY-MM-DD" in user TZ
+  tags      String   // JSON array: ["travel","training"]
+  note      String?  // optional user note
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayKey])
+  @@index([userId, dayKey])
+}
+
+model CalendarDaySummary {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey    String   // "YYYY-MM-DD"
+  calories  Int      @default(0)
+  protein   Int      @default(0)
+  carbs     Int      @default(0)
+  fat       Int      @default(0)
+  mealCount Int      @default(0)
+  qualityScore Float?  // optional
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dayKey])
+  @@index([userId, dayKey])
+}
+model HealthReport {
+  id        String   @id @default(cuid())
+  userId    String
+  startDate DateTime
+  endDate   DateTime
+  data      String   // JSON string of the full report
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, endDate])
+}
