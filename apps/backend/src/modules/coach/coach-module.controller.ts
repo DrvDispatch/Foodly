@@ -72,4 +72,13 @@ export class CoachModuleController {
     async markAsRead(@CurrentUser() user: UserPayload) {
         return this.coachService.markAsRead(user.id);
     }
+
+    /**
+     * POST /api/coach/reflection
+     * Generate daily reflection (if after 8pm and not already generated)
+     */
+    @Post('reflection')
+    async generateReflection(@CurrentUser() user: UserPayload) {
+        return this.coachService.generateReflection(user.id);
+    }
 }

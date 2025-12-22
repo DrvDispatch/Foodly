@@ -65,4 +65,14 @@ export class ProfileController {
     async getGoals(@CurrentUser() user: UserPayload) {
         return this.profileService.getMacroTargets(user.id);
     }
+
+    /**
+     * POST /api/profile/explain
+     * AI explanation of why targets are set as they are
+     */
+    @Post('explain')
+    async explainTargets(@CurrentUser() user: UserPayload) {
+        return this.profileService.explainTargets(user.id);
+    }
 }
+

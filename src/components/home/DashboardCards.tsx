@@ -8,6 +8,24 @@ import { cn } from '@/lib/utils'
 import { apiFetcher } from '@/lib/api-client'
 import { ProgressMeter } from './ProgressMeter'
 
+// Response interfaces
+interface HealthData {
+    nutrients?: { name: string; percentOfRDA: number }[]
+    deficiencies?: string[]
+    daysWithData?: number
+}
+
+interface HabitsData {
+    activeDays?: number
+    avgDaysPerWeek?: number
+    heatmap?: { date: string; logged: boolean }[]
+}
+
+interface WeightData {
+    entries?: { weight: number; date: string }[]
+    trend?: { weeklyChange?: number }
+}
+
 interface DashboardCardsProps {
     selectedDate: Date
     summary: {
@@ -31,9 +49,9 @@ export function DashboardCards({ selectedDate, summary, goals, onNutritionClick 
     const touchStartX = useRef(0)
 
     // Fetch data using apiClient (NestJS backend)
-    const { data: healthData } = useSWR('/health/weekly', apiFetcher, { revalidateOnFocus: false })
-    const { data: habitsData } = useSWR('/habits/summary', apiFetcher, { revalidateOnFocus: false })
-    const { data: weightData } = useSWR('/weight', apiFetcher, { revalidateOnFocus: false })
+    const { data: healthData } = useSWR<HealthData>('/health/weekly', apiFetcher, { revalidateOnFocus: false })
+    const { data: habitsData } = useSWR<HabitsData>('/habits/summary', apiFetcher, { revalidateOnFocus: false })
+    const { data: weightData } = useSWR<WeightData>('/weight', apiFetcher, { revalidateOnFocus: false })
 
     // Calculations - rounded properly
     const caloriePercent = Math.min(Math.round((summary.calories / goals.calories) * 100), 999)
@@ -201,8 +219,8 @@ export function DashboardCards({ selectedDate, summary, goals, onNutritionClick 
                                 </div>
 
                                 <p className="text-xs text-surface-600 mb-1">
-                                    {healthData?.deficiencies?.length > 0
-                                        ? `Low: ${healthData.deficiencies.slice(0, 2).join(', ')}`
+                                    {(healthData?.deficiencies?.length ?? 0) > 0
+                                        ? `Low: ${healthData?.deficiencies?.slice(0, 2).join(', ')}`
                                         : 'Looking balanced'}
                                 </p>
 

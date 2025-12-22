@@ -14,7 +14,6 @@ import { subDays, format, startOfDay } from 'date-fns';
  */
 @Injectable()
 export class HabitsService {
-    private readonly MODEL_NAME = 'gemini-3-flash-preview';
 
     constructor(
         private prisma: PrismaService,
@@ -107,6 +106,18 @@ export class HabitsService {
             if (apiKey) {
                 const genAI = new GoogleGenAI({ apiKey });
 
+                // Schema for AI habit insight
+                const habitInsightSchema = {
+                    type: Type.OBJECT,
+                    properties: {
+                        insight: {
+                            type: Type.STRING,
+                            description: 'One sentence about the user\'s logging habits. Identity-focused, not performance-focused. Max 60 chars.',
+                        },
+                    },
+                    required: ['insight'],
+                };
+
                 const prompt = `Generate ONE short identity-focused observation (max 60 chars) about this user's logging habits. No advice.
 
 DATA:
@@ -121,14 +132,16 @@ EXAMPLES:
 - "You log meals about ${avgDaysPerWeek} days per week"
 - "Dinner is your anchor meal"
 - "Weekday logging is stronger than weekends"
+- "Consistency has been improving recently"
 
 Return JSON with "insight" field.`;
 
                 const result = await genAI.models.generateContent({
-                    model: this.MODEL_NAME,
+                    model: 'gemini-3-flash-preview',
                     contents: prompt,
                     config: {
                         responseMimeType: 'application/json',
+                        responseSchema: habitInsightSchema,
                         temperature: 0.3,
                     },
                 });

@@ -1,6 +1,7 @@
 import {
     Controller,
     Get,
+    Post,
     Put,
     Delete,
     Body,
@@ -18,6 +19,8 @@ import { PatternType } from '../ai/calendar.util';
  * 
  * Endpoints:
  * - GET /api/calendar/month - Get month summary with patterns and contexts
+ * - GET /api/calendar/day - Get detailed day data (meals, summary, context)
+ * - POST /api/calendar/ai-filter - AI filter for calendar days
  * - PUT /api/calendar/context - Upsert day context (tags, note)
  * - DELETE /api/calendar/context - Delete day context
  */
@@ -37,6 +40,30 @@ export class CalendarController {
         @Query('pattern') pattern?: PatternType,
     ) {
         return this.calendarService.getMonthSummary(user.id, month, pattern);
+    }
+
+    /**
+     * GET /api/calendar/day
+     * Get detailed day data (meals, summary, context)
+     */
+    @Get('day')
+    async getDay(
+        @CurrentUser() user: UserPayload,
+        @Query('dayKey') dayKey: string,
+    ) {
+        return this.calendarService.getDayDetail(user.id, dayKey);
+    }
+
+    /**
+     * POST /api/calendar/ai-filter
+     * AI-powered filter for calendar days
+     */
+    @Post('ai-filter')
+    async aiFilter(
+        @CurrentUser() user: UserPayload,
+        @Body() dto: { query: string; month: string },
+    ) {
+        return this.calendarService.aiFilter(user.id, dto.query, dto.month);
     }
 
     /**
@@ -63,3 +90,4 @@ export class CalendarController {
         return this.calendarService.deleteContext(user.id, dayKey);
     }
 }
+

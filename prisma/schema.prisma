@@ -1,4 +1,6 @@
-// This is your Prisma schema file,
+// This is the SINGLE SOURCE OF TRUTH for the Prisma schema
+// Used by both the Next.js frontend and NestJS backend
+// Backend uses: --schema=../../prisma/schema.prisma
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -7,6 +9,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
