@@ -65,11 +65,11 @@ export class CoachModuleService {
             },
         });
 
-        // Get context for reply
+        // Get context for reply - expanded to 7 days for better history
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
 
-        const [profile, recentMessages, todayMeals] = await Promise.all([
+        const [profile, recentMessages, todayMeals, weekMeals] = await Promise.all([
             this.prisma.profile.findUnique({ where: { userId } }),
             this.prisma.coachMessage.findMany({
                 where: { userId, date: today },
@@ -89,22 +89,39 @@ export class CoachModuleService {
                     items: true,
                 },
             }),
+            // Last 7 days of meals for context
+            this.prisma.meal.findMany({
+                where: {
+                    userId,
+                    mealTime: { gte: weekAgo },
+                },
+                include: {
+                    snapshots: { where: { isActive: true } },
+                    items: true,
+                },
+                orderBy: { mealTime: 'desc' },
+                take: 30,
+            }),
         ]);
 
-        // Build meal descriptions
-        const buildMealDescription = (meal: typeof todayMeals[0]) => {
+        // Type alias for meal with items and snapshots
+        type MealWithDetails = typeof todayMeals[number];
+
+        // Helper to build rich meal description from items
+        const buildMealDescription = (meal: MealWithDetails): string => {
             if (meal.items && meal.items.length > 0) {
-                return meal.items.map((item) => {
+                const itemDescriptions = meal.items.map((item: typeof meal.items[number]) => {
                     const portion = item.portionDesc || '';
                     return portion ? `${item.name} (${portion})` : item.name;
-                }).join(', ');
+                });
+                return itemDescriptions.join(', ');
             }
             return meal.description || meal.type;
         };
 
         // Calculate daily summary
         const daySummary = todayMeals.reduce(
-            (acc, meal) => {
+            (acc: { calories: number; protein: number; carbs: number; fat: number }, meal: MealWithDetails) => {
                 const snapshot = meal.snapshots[0];
                 if (snapshot) {
                     acc.calories += snapshot.calories;
@@ -117,8 +134,8 @@ export class CoachModuleService {
             { calories: 0, protein: 0, carbs: 0, fat: 0 },
         );
 
-        // Build meal context
-        const mealContext = todayMeals.map((m) => {
+        // Build rich meal context with detailed descriptions
+        const mealContext = todayMeals.map((m: MealWithDetails) => {
             const desc = buildMealDescription(m);
             const snapshot = m.snapshots[0];
             if (snapshot) {
@@ -127,7 +144,14 @@ export class CoachModuleService {
             return desc;
         });
 
-        // Generate coach reply
+        // Add recent days summary for context (last 7 days excluding today)
+        const recentDaysSummary = weekMeals
+            .filter((m: MealWithDetails) => m.mealTime.toISOString().split('T')[0] !== today)
+            .slice(0, 10)
+            .map((m: MealWithDetails) => `${m.mealTime.toISOString().split('T')[0]}: ${buildMealDescription(m)}`)
+            .join('; ');
+
+        // Generate coach reply with expanded context
         const reply = await this.coachAiService.generateCoachReply({
             question,
             profile: profile ? {
@@ -135,12 +159,12 @@ export class CoachModuleService {
                 targetCal: profile.targetCal || undefined,
                 proteinTarget: profile.proteinTarget || undefined,
             } : null,
-            recentMessages: recentMessages.reverse().map((m) => ({
+            recentMessages: recentMessages.reverse().map((m: typeof recentMessages[number]) => ({
                 role: m.role,
                 content: m.content,
             })),
             daySummary,
-            meals: mealContext,
+            meals: [...mealContext, recentDaysSummary ? `[Recent days: ${recentDaysSummary}]` : ''].filter(Boolean),
         });
 
         // Save coach's reply

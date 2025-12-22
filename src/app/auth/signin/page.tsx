@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, Chrome, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient, setTokens } from '@/lib/api-client'
 import NextImage from 'next/image'
 
 function SignInContent() {
@@ -60,14 +61,18 @@ function SignInContent() {
         setFormError(null)
 
         try {
-            const res = await fetch('/api/auth/demo', { method: 'POST' })
-            const data = await res.json()
+            const data = await apiClient.post<{ 
+                user: { email: string }
+                accessToken: string
+                refreshToken: string 
+            }>('/auth/demo')
 
-            if (!res.ok) {
-                throw new Error(data.error || 'Failed to start demo')
+            // Store the JWT tokens from the backend
+            if (data.accessToken && data.refreshToken) {
+                setTokens(data.accessToken, data.refreshToken)
             }
 
-            // Sign in with demo credentials
+            // Sign in with demo credentials for NextAuth session
             const result = await signIn('credentials', {
                 redirect: false,
                 email: data.user.email,
@@ -264,4 +269,3 @@ export default function SignInPage() {
         </Suspense>
     )
 }
-

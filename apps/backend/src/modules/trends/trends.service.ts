@@ -6,7 +6,7 @@ import { toZonedTime } from 'date-fns-tz';
 /**
  * Trend data point for a single day
  */
-interface DailyDataPoint {
+export interface DailyDataPoint {
     date: string;
     calories: number;
     protein: number;
@@ -18,7 +18,7 @@ interface DailyDataPoint {
 /**
  * Statistics for a metric
  */
-interface MetricStats {
+export interface MetricStats {
     mean: number;
     stdDev: number;
     consistencyScore: number;
@@ -83,6 +83,9 @@ export class TrendsService {
             orderBy: { mealTime: 'asc' },
         });
 
+        // Type alias for meal with snapshots
+        type MealWithSnapshots = typeof meals[number];
+
         // Initialize all days in range
         const dailyData: Record<string, DailyDataPoint> = {};
         for (let i = 0; i < days; i++) {
@@ -99,7 +102,7 @@ export class TrendsService {
         }
 
         // Populate with actual data
-        meals.forEach((meal) => {
+        meals.forEach((meal: MealWithSnapshots) => {
             const dayKey = format(toZonedTime(meal.mealTime, timezone), 'yyyy-MM-dd');
             if (dailyData[dayKey]) {
                 const snapshot = meal.snapshots[0];

@@ -39,6 +39,12 @@ export class ExportService {
             }),
         ]);
 
+        // Type aliases
+        type MealType = typeof meals[number];
+        type MealItemType = MealType['items'][number];
+        type WeightType = typeof weightEntries[number];
+        type GoalType = typeof goals[number];
+
         const exportData = {
             exportedAt: new Date().toISOString(),
             version: '1.0',
@@ -60,11 +66,11 @@ export class ExportService {
                     allergies: profile.allergies,
                 }
                 : null,
-            meals: meals.map((m) => ({
+            meals: meals.map((m: MealType) => ({
                 type: m.type,
                 description: m.description,
                 mealTime: m.mealTime,
-                items: m.items.map((item) => ({
+                items: m.items.map((item: MealItemType) => ({
                     name: item.name,
                     portion: item.portionDesc,
                     gramsEst: item.gramsEst,
@@ -82,12 +88,12 @@ export class ExportService {
                     }
                     : null,
             })),
-            weightEntries: weightEntries.map((w) => ({
+            weightEntries: weightEntries.map((w: WeightType) => ({
                 weight: w.weight,
                 date: w.date,
                 note: w.note,
             })),
-            goals: goals.map((g) => ({
+            goals: goals.map((g: GoalType) => ({
                 dailyCal: g.dailyCal,
                 proteinG: g.proteinG,
                 carbsG: g.carbsG,

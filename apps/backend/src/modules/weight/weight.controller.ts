@@ -2,13 +2,15 @@ import {
     Controller,
     Get,
     Post,
+    Put,
     Delete,
     Body,
+    Param,
     Query,
     UseGuards,
 } from '@nestjs/common';
 import { WeightService } from './weight.service';
-import { CreateWeightDto } from './dto';
+import { CreateWeightDto, UpdateWeightDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, UserPayload } from '../../common/decorators';
 
@@ -18,7 +20,8 @@ import { CurrentUser, UserPayload } from '../../common/decorators';
  * Endpoints:
  * - GET /api/weight - Get weight entries with profile context
  * - POST /api/weight - Add new weight entry
- * - DELETE /api/weight - Delete weight entry
+ * - PUT /api/weight/:id - Update weight entry
+ * - DELETE /api/weight/:id - Delete weight entry
  * - GET /api/weight/history - Get full weight history
  */
 @Controller('weight')
@@ -52,13 +55,26 @@ export class WeightController {
     }
 
     /**
-     * DELETE /api/weight
+     * PUT /api/weight/:id
+     * Update a weight entry
+     */
+    @Put(':id')
+    async updateWeight(
+        @CurrentUser() user: UserPayload,
+        @Param('id') id: string,
+        @Body() dto: UpdateWeightDto,
+    ) {
+        return this.weightService.updateWeightEntry(user.id, id, dto);
+    }
+
+    /**
+     * DELETE /api/weight/:id
      * Delete a weight entry by ID
      */
-    @Delete()
+    @Delete(':id')
     async deleteWeight(
         @CurrentUser() user: UserPayload,
-        @Query('id') id: string,
+        @Param('id') id: string,
     ) {
         return this.weightService.deleteWeightEntry(user.id, id);
     }

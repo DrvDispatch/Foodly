@@ -63,6 +63,9 @@ export class HealthService {
             orderBy: { mealTime: 'asc' },
         });
 
+        // Type alias for meal with snapshots
+        type MealWithSnapshots = typeof meals[number];
+
         if (meals.length === 0) {
             return {
                 period: 'Last 7 days',
@@ -77,7 +80,7 @@ export class HealthService {
         }
 
         // Count unique days
-        const uniqueDays = new Set(meals.map((m) => m.mealTime.toISOString().split('T')[0]));
+        const uniqueDays = new Set(meals.map((m: MealWithSnapshots) => m.mealTime.toISOString().split('T')[0]));
         const daysWithMeals = uniqueDays.size;
 
         // Aggregate micronutrients
@@ -86,7 +89,7 @@ export class HealthService {
             magnesium: 0, zinc: 0, calcium: 0, potassium: 0, fiber: 0,
         };
 
-        meals.forEach((meal) => {
+        meals.forEach((meal: MealWithSnapshots) => {
             const snapshot = meal.snapshots[0];
             if (snapshot) {
                 if (snapshot.vitaminD) totals.vitaminD += snapshot.vitaminD;

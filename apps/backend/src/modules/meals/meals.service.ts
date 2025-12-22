@@ -48,7 +48,7 @@ export class MealsService {
         });
 
         // Transform to include active snapshot at top level
-        return meals.map((meal) => ({
+        return meals.map((meal: typeof meals[number]) => ({
             ...meal,
             activeSnapshot: meal.snapshots[0] || null,
             snapshots: undefined,

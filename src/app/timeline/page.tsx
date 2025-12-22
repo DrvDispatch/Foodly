@@ -8,9 +8,8 @@ import useSWR from 'swr'
 import NextImage from 'next/image'
 
 import { cn } from '@/lib/utils'
+import { apiFetcher } from '@/lib/api-client'
 import { BottomNav } from '@/components/bottom-nav'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface TimelineMeal {
     id: string
@@ -56,8 +55,8 @@ export default function TimelinePage() {
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd')
     const { data, isLoading, error } = useSWR<TimelineData>(
-        `/api/timeline/${dateKey}`,
-        fetcher,
+        `/timeline/${dateKey}`,
+        apiFetcher,
         { revalidateOnFocus: false }
     )
 

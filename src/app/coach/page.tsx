@@ -7,6 +7,7 @@ import { Send, Loader2, RefreshCw, Sparkles, ChevronLeft } from 'lucide-react'
 import NextImage from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import { BottomNav } from '@/components/bottom-nav'
 import { useThemedAsset } from '@/hooks/useThemedAsset'
 
@@ -45,19 +46,16 @@ export default function CoachPage() {
     const fetchMessages = useCallback(async (cursor?: string) => {
         try {
             const url = cursor
-                ? `/api/coach/messages?cursor=${cursor}&days=30`
-                : '/api/coach/messages?days=7'
-            const res = await fetch(url)
-            if (res.ok) {
-                const data = await res.json()
-                if (cursor) {
-                    // Prepend older messages
-                    setMessages(prev => [...data.messages, ...prev])
-                } else {
-                    setMessages(data.messages)
-                }
-                setNextCursor(data.nextCursor)
+                ? `/coach/messages?cursor=${cursor}&days=30`
+                : '/coach/messages?days=7'
+            const data = await apiClient.get<{ messages: CoachMessage[], nextCursor: string | null }>(url)
+            if (cursor) {
+                // Prepend older messages
+                setMessages(prev => [...data.messages, ...prev])
+            } else {
+                setMessages(data.messages)
             }
+            setNextCursor(data.nextCursor)
         } catch (error) {
             console.error('Failed to fetch messages:', error)
         }
@@ -74,7 +72,7 @@ export default function CoachPage() {
                 }, 100)
             })
             // Mark as read
-            fetch('/api/coach/state', { method: 'POST' })
+            apiClient.post('/coach/state/read').catch(console.error)
         }
     }, [status, fetchMessages])
 
@@ -83,11 +81,10 @@ export default function CoachPage() {
         if (status === 'authenticated') {
             const hour = new Date().getHours()
             if (hour >= 20) {
-                fetch('/api/coach/reflection', { method: 'POST' })
-                    .then(res => res.json())
+                apiClient.post<{ generated: boolean, message?: CoachMessage }>('/coach/reflection')
                     .then(data => {
                         if (data.generated && data.message) {
-                            setMessages(prev => [...prev, data.message])
+                            setMessages(prev => [...prev, data.message!])
                         }
                     })
                     .catch(console.error)
@@ -114,20 +111,12 @@ export default function CoachPage() {
         setIsSending(true)
 
         try {
-            const res = await fetch('/api/coach/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question }),
-            })
-
-            if (res.ok) {
-                const data = await res.json()
-                setMessages(prev => [...prev, data.userMessage, data.coachMessage])
-                // Scroll to bottom
-                setTimeout(() => {
-                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-                }, 100)
-            }
+            const data = await apiClient.post<{ userMessage: CoachMessage, coachMessage: CoachMessage }>('/coach/messages', { question })
+            setMessages(prev => [...prev, data.userMessage, data.coachMessage])
+            // Scroll to bottom
+            setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+            }, 100)
         } catch (error) {
             console.error('Failed to send message:', error)
         } finally {
@@ -139,10 +128,9 @@ export default function CoachPage() {
     const triggerReflection = async () => {
         setIsGeneratingReflection(true)
         try {
-            const res = await fetch('/api/coach/reflection', { method: 'POST' })
-            const data = await res.json()
+            const data = await apiClient.post<{ generated: boolean, message?: CoachMessage }>('/coach/reflection')
             if (data.generated && data.message) {
-                setMessages(prev => [...prev, data.message])
+                setMessages(prev => [...prev, data.message!])
             }
         } catch (error) {
             console.error('Failed to generate reflection:', error)

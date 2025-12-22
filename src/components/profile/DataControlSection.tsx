@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Shield, Download, Upload, Trash2, AlertTriangle, X, FileText } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import { apiClient } from '@/lib/api-client'
 
 interface DataControlSectionProps {
     className?: string
@@ -19,10 +20,12 @@ export function DataControlSection({ className }: DataControlSectionProps) {
     const handleExport = async () => {
         setIsExporting(true)
         try {
-            const response = await fetch('/api/export')
+            // For export, we need the raw response to get blob
+            const response = await apiClient.raw<any>('/export')
             if (!response.ok) throw new Error('Export failed')
 
-            const blob = await response.blob()
+            // Get blob from response
+            const blob = new Blob([JSON.stringify(response.data)], { type: 'application/json' })
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
@@ -43,15 +46,8 @@ export function DataControlSection({ className }: DataControlSectionProps) {
 
         setIsDeleting(true)
         try {
-            const response = await fetch('/api/account/delete', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ confirmation: deleteConfirmation })
-            })
-
-            if (response.ok) {
-                await signOut({ callbackUrl: '/' })
-            }
+            await apiClient.delete('/account/delete')
+            await signOut({ callbackUrl: '/' })
         } catch (error) {
             console.error('Delete failed:', error)
         } finally {

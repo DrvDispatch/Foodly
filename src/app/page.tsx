@@ -16,6 +16,7 @@ import { BottomNav } from '@/components/bottom-nav'
 import { useTodaySummary } from '@/hooks/useTodaySummary'
 import { useMealInsights, useWhatNextHint } from '@/hooks/useInsights'
 import { formatDate, cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import {
     UserContext,
     DayContext,
@@ -138,7 +139,7 @@ export default function HomePage() {
     const handleDeleteMeal = async (mealId: string) => {
         setDeletingMealId(mealId)
         try {
-            await fetch(`/api/meals/${mealId}`, { method: 'DELETE' })
+            await apiClient.delete(`/meals/${mealId}`)
             await refreshTodayData()
         } catch (error) {
             console.error('Failed to delete meal:', error)

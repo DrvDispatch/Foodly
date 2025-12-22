@@ -39,3 +39,20 @@ export class RefreshTokenDto {
     @IsString()
     refreshToken: string;
 }
+
+/**
+ * DTO for exchanging NextAuth session for NestJS JWT
+ * Used when user logs in via Google OAuth through NextAuth
+ */
+export class ExchangeSessionDto {
+    @IsEmail()
+    email: string;
+
+    @IsString()
+    @IsOptional()
+    name?: string;
+
+    @IsString()
+    @IsOptional()
+    sessionUserId?: string;
+}

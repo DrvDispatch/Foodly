@@ -3,8 +3,7 @@
 import { Zap, Check, Circle, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useSWR from 'swr'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
+import { apiFetcher } from '@/lib/api-client'
 
 interface ProgressData {
     rank: string
@@ -66,7 +65,7 @@ interface ProgressMeterProps {
 }
 
 export function ProgressMeter({ className }: ProgressMeterProps) {
-    const { data, isLoading } = useSWR<ProgressData>('/api/progress', fetcher, {
+    const { data, isLoading } = useSWR<ProgressData>('/progress', apiFetcher, {
         revalidateOnFocus: false,
         dedupingInterval: 30000
     })
@@ -215,7 +214,7 @@ export function ProgressMeter({ className }: ProgressMeterProps) {
  * ProgressBadge - Minimal inline badge for showing rank
  */
 export function ProgressBadge({ className }: { className?: string }) {
-    const { data } = useSWR<ProgressData>('/api/progress', fetcher, {
+    const { data } = useSWR<ProgressData>('/progress', apiFetcher, {
         revalidateOnFocus: false
     })
 

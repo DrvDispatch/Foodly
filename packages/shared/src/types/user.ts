@@ -44,7 +44,9 @@ export interface Profile {
     updatedAt: Date;
 }
 
-export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'athlete';
+// ActivityLevel is exported from constants/activity.ts
+import type { ActivityLevel } from '../constants/activity';
+export type { ActivityLevel };
 
 export type GoalType = 'fat_loss' | 'maintenance' | 'muscle_gain' | 'strength' | 'recomp' | 'health' | 'lose' | 'maintain' | 'gain';
 

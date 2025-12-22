@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Scale, Plus, TrendingUp, Target, X } from 'lucide-react'
 import useSWR from 'swr'
 import { format } from 'date-fns'
+import { apiClient, apiFetcher } from '@/lib/api-client'
 
 interface WeightData {
     entries: Array<{
@@ -22,8 +23,6 @@ interface WeightTrackingSectionProps {
     onNavigateToTrends?: () => void
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
 export function WeightTrackingSection({ onNavigateToTrends }: WeightTrackingSectionProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showAddSheet, setShowAddSheet] = useState(false)
@@ -31,7 +30,7 @@ export function WeightTrackingSection({ onNavigateToTrends }: WeightTrackingSect
     const [newNote, setNewNote] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const { data, mutate } = useSWR<WeightData>('/api/weight?limit=5', fetcher)
+    const { data, mutate } = useSWR<WeightData>('/weight?limit=5', apiFetcher)
 
     const isMetric = data?.unitSystem !== 'imperial'
     const latestWeight = data?.currentWeight || data?.entries?.[0]?.weight
@@ -52,13 +51,9 @@ export function WeightTrackingSection({ onNavigateToTrends }: WeightTrackingSect
             // Convert from imperial if needed
             const weightKg = isMetric ? weight : weight / 2.205
 
-            await fetch('/api/weight', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    weight: weightKg,
-                    note: newNote || undefined
-                })
+            await apiClient.post('/weight', {
+                weight: weightKg,
+                note: newNote || undefined
             })
 
             mutate()

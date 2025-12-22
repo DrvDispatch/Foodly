@@ -69,6 +69,11 @@ export class CalendarService {
             },
         });
 
+        // Type alias for meal with snapshots
+        type MealWithSnapshots = typeof meals[number];
+        // Type alias for context
+        type DayContextType = typeof contexts[number];
+
         // Aggregate meals by day
         const dayTotals: Record<string, {
             mealCount: number;
@@ -78,7 +83,7 @@ export class CalendarService {
             fat: number;
         }> = {};
 
-        meals.forEach((meal) => {
+        meals.forEach((meal: MealWithSnapshots) => {
             const dayKey = format(new Date(meal.mealTime), 'yyyy-MM-dd');
             const snapshot = meal.snapshots[0];
 
@@ -112,7 +117,7 @@ export class CalendarService {
         const targetFat = user.profile?.fatTarget || 70;
 
         // Process contexts
-        contexts.forEach((ctx) => {
+        contexts.forEach((ctx: DayContextType) => {
             const tags = JSON.parse(ctx.tags) as string[];
             contextsMap[ctx.dayKey] = {
                 tags,

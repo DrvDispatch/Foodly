@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, ComposedChart, Tooltip } from 'recharts'
 import { ChevronDown, ChevronUp, TrendingDown, TrendingUp, AlertCircle, Target, MessageCircle, Info, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import Link from 'next/link'
 
 interface WeightEntry {
@@ -46,29 +47,20 @@ function useNormalcyMessage(
         const fetchNormalcy = async () => {
             setIsLoading(true)
             try {
-                const res = await fetch('/api/trends/weight-normalcy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        entries: entries.slice(-10), // Last 10 entries for context
-                        direction,
-                        goalType,
-                        targetWeight,
-                        currentWeight,
-                        weeklyPace,
-                        weeksToTarget
-                    })
+                const data = await apiClient.post<{ message: string; type: string }>('/trends/weight-normalcy', {
+                    entries: entries.slice(-10), // Last 10 entries for context
+                    direction,
+                    goalType,
+                    targetWeight,
+                    currentWeight,
+                    weeklyPace,
+                    weeksToTarget
                 })
 
-                if (res.ok) {
-                    const data = await res.json()
-                    setNormalcy({
-                        message: data.message || 'Weight fluctuations are normal',
-                        type: (data.type as 'success' | 'info' | 'warning') || 'info'
-                    })
-                } else {
-                    setNormalcy({ message: 'Weight fluctuations are completely normal', type: 'info' })
-                }
+                setNormalcy({
+                    message: data.message || 'Weight fluctuations are normal',
+                    type: (data.type as 'success' | 'info' | 'warning') || 'info'
+                })
             } catch {
                 setNormalcy({ message: 'Weight fluctuations are completely normal', type: 'info' })
             } finally {

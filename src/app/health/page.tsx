@@ -6,9 +6,8 @@ import { Heart, MessageCircle, Loader2, AlertTriangle, ChevronDown, ChevronUp, I
 import useSWR from 'swr'
 
 import { cn } from '@/lib/utils'
+import { apiFetcher } from '@/lib/api-client'
 import { BottomNav } from '@/components/bottom-nav'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface Nutrient {
     name: string
@@ -63,8 +62,8 @@ export default function HealthPage() {
     const [expandedNutrient, setExpandedNutrient] = useState<string | null>(null)
 
     const { data, isLoading, error } = useSWR<HealthData>(
-        '/api/health/weekly',
-        fetcher,
+        '/health/weekly',
+        apiFetcher,
         { revalidateOnFocus: false }
     )
 

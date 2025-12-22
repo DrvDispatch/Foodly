@@ -1,4 +1,5 @@
 import useSWR from 'swr'
+import { apiClient, apiFetcher } from '@/lib/api-client'
 
 interface ProfileData {
     id?: string
@@ -31,9 +32,7 @@ interface ProfileData {
 }
 
 const fetcher = async (url: string) => {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error('Failed to fetch profile')
-    const data = await res.json()
+    const data = await apiFetcher<any>(url)
 
     // Parse JSON fields if they're strings
     const safeJsonParse = (val: any) => {
@@ -54,7 +53,7 @@ const fetcher = async (url: string) => {
 
 export function useProfile() {
     const { data, error, isLoading, mutate } = useSWR<ProfileData>(
-        '/api/profile',
+        '/profile',
         fetcher,
         {
             revalidateOnFocus: false,
@@ -64,12 +63,7 @@ export function useProfile() {
 
     const updateProfile = async (updates: Partial<ProfileData>) => {
         try {
-            const res = await fetch('/api/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates)
-            })
-            if (!res.ok) throw new Error('Failed to update')
+            await apiClient.post('/profile', updates)
             mutate() // Refresh data
             return true
         } catch {

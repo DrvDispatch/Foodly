@@ -1,4 +1,5 @@
 import useSWR from 'swr'
+import { apiFetcher } from '@/lib/api-client'
 
 interface WeightEntry {
     id: string
@@ -16,15 +17,13 @@ interface WeightTrendData {
     weeklyPace?: number
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
 export function useWeightTrend(dateRange: '7d' | '30d' | '90d' | '180d') {
     // Determine how many entries to fetch based on range
     const limit = dateRange === '7d' ? 14 : dateRange === '30d' ? 60 : dateRange === '90d' ? 180 : 365
 
     const { data, error, isLoading, mutate } = useSWR<WeightTrendData>(
-        `/api/weight?limit=${limit}`,
-        fetcher,
+        `/weight?limit=${limit}`,
+        apiFetcher,
         {
             revalidateOnFocus: true,
             dedupingInterval: 5000,

@@ -103,9 +103,10 @@ export default function CalendarPage() {
                 ) : error ? (
                     <div className="p-8 text-center text-surface-500">
                         <p>Failed to load calendar.</p>
-                        <button onClick={refresh} className="mt-2 text-primary-600 underline">Retry</button>
+                        <button onClick={() => refresh()} className="mt-2 text-primary-600 underline">Retry</button>
                     </div>
                 ) : (
+
                     <>
                         {/* Calendar Grid */}
                         <div className="bg-white rounded-2xl shadow-sm border border-surface-100 p-3">

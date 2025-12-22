@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Sparkles, Mail, ArrowLeft, Loader2, CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import NextImage from 'next/image'
 
 export default function ForgotPasswordPage() {
@@ -18,18 +19,7 @@ export default function ForgotPasswordPage() {
         setFormError(null)
 
         try {
-            const res = await fetch('/api/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            })
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Something went wrong')
-            }
-
+            await apiClient.post('/auth/forgot-password', { email })
             setSuccess(true)
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'Something went wrong')

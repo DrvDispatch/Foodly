@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
+import { apiClient } from '@/lib/api-client'
 import {
     InsightSignal,
     UserContext,
@@ -49,15 +50,7 @@ async function fetchInsight(
     }
 
     try {
-        const response = await fetch('/api/insights', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ signal, userContext, level }),
-        })
-
-        if (!response.ok) return null
-
-        const data = await response.json()
+        const data = await apiClient.post<{ insight: string }>('/insights', { signal, userContext, level })
         if (data.insight) {
             clientCache.set(cacheKey, { text: data.insight, timestamp: Date.now() })
             return data.insight

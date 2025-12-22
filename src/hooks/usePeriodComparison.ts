@@ -1,4 +1,5 @@
 import useSWR from 'swr'
+import { apiFetcher } from '@/lib/api-client'
 
 interface PeriodData {
     label: string
@@ -26,12 +27,10 @@ interface CompareData {
     }
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
 export function usePeriodComparison(preset: '14d' | '30d' = '14d') {
     const { data, error, isLoading, mutate } = useSWR<CompareData>(
-        `/api/trends/compare?preset=${preset}`,
-        fetcher,
+        `/trends/compare?preset=${preset}`,
+        apiFetcher,
         {
             revalidateOnFocus: false,
             dedupingInterval: 60000 // 1 minute

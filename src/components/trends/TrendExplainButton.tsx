@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sparkles, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import type { MetricType } from './MetricTabs'
 import type { TimeRange } from './TimeRangeSelector'
 
@@ -44,17 +45,7 @@ export function TrendExplainButton({ metric, range, stats, goal, dataPoints }: T
         setError(null)
 
         try {
-            const response = await fetch('/api/trends/explain', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ metric, range, stats, goal, dataPoints })
-            })
-
-            if (!response.ok) {
-                throw new Error('Failed to explain')
-            }
-
-            const data = await response.json()
+            const data = await apiClient.post<ExplainResult>('/trends/explain', { metric, range, stats, goal, dataPoints })
             setResult(data)
         } catch (err) {
             setError('Failed to generate explanation')

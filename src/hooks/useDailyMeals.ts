@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { apiClient } from '@/lib/api-client'
 
 export interface Meal {
     id: string
@@ -72,36 +73,33 @@ export function useDailyMeals(selectedDate: Date, options?: UseDailyMealsOptions
             const endOfDay = new Date(selectedDate)
             endOfDay.setHours(23, 59, 59, 999)
 
-            const res = await fetch(
-                `/api/meals?from=${startOfDay.toISOString()}&to=${endOfDay.toISOString()}`
+            const data: Meal[] = await apiClient.get(
+                `/meals?from=${startOfDay.toISOString()}&to=${endOfDay.toISOString()}`
             )
 
-            if (res.ok) {
-                const data: Meal[] = await res.json()
-                setMeals(data)
+            setMeals(data)
 
-                // Calculate totals (only from analyzed meals)
-                let totalCal = 0, totalP = 0, totalC = 0, totalF = 0
-                for (const meal of data) {
-                    if (meal.activeSnapshot) {
-                        totalCal += meal.activeSnapshot.calories
-                        totalP += meal.activeSnapshot.protein
-                        totalC += meal.activeSnapshot.carbs
-                        totalF += meal.activeSnapshot.fat
-                    }
+            // Calculate totals (only from analyzed meals)
+            let totalCal = 0, totalP = 0, totalC = 0, totalF = 0
+            for (const meal of data) {
+                if (meal.activeSnapshot) {
+                    totalCal += meal.activeSnapshot.calories
+                    totalP += meal.activeSnapshot.protein
+                    totalC += meal.activeSnapshot.carbs
+                    totalF += meal.activeSnapshot.fat
                 }
-
-                setSummary(prev => ({
-                    ...prev,
-                    calories: totalCal,
-                    protein: totalP,
-                    carbs: totalC,
-                    fat: totalF,
-                }))
-
-                // Return true if any meals are still analyzing
-                return data.some(m => m.isAnalyzing || m.type === 'analyzing')
             }
+
+            setSummary(prev => ({
+                ...prev,
+                calories: totalCal,
+                protein: totalP,
+                carbs: totalC,
+                fat: totalF,
+            }))
+
+            // Return true if any meals are still analyzing
+            return data.some(m => m.isAnalyzing || m.type === 'analyzing')
         } catch (error) {
             console.error('Failed to fetch meals:', error)
         }
@@ -110,16 +108,12 @@ export function useDailyMeals(selectedDate: Date, options?: UseDailyMealsOptions
 
     const deleteMeal = useCallback(async (mealId: string) => {
         try {
-            const res = await fetch(`/api/meals/${mealId}`, {
-                method: 'DELETE',
-            })
-            if (res.ok) {
-                // Optimistic update
-                setMeals(prev => prev.filter(m => m.id !== mealId))
-                // Recalculate summary
-                await fetchMeals()
-                return true
-            }
+            await apiClient.delete(`/meals/${mealId}`)
+            // Optimistic update
+            setMeals(prev => prev.filter(m => m.id !== mealId))
+            // Recalculate summary
+            await fetchMeals()
+            return true
         } catch (error) {
             console.error('Failed to delete meal:', error)
         }

@@ -55,6 +55,30 @@ export const PATTERNS = {
 
 export type PatternType = typeof PATTERNS[keyof typeof PATTERNS]
 
+export interface CalendarStats {
+    activeDays: number
+    totalDays: number
+    missedDays: number
+    currentStreak: number
+    consistentWeeks: number
+}
+
+export interface DayData {
+    dayStatus: 'on_track' | 'off_target' | 'far_off' | 'no_data'
+    goalScore?: number
+}
+
+export interface DayContext {
+    dominant?: string
+}
+
+export interface CalendarMonthData {
+    stats: CalendarStats
+    days: Record<string, DayData>
+    contexts: Record<string, DayContext>
+}
+
+
 /**
  * Priority for Context Tags (highest to lowest)
  */

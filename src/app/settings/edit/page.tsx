@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Target, TrendingDown, TrendingUp, Minus, ArrowLeft, ArrowRight, Zap, RefreshCw, Heart, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import { PrimaryGoal } from '@/lib/insights'
 
 const goals = [
@@ -91,18 +92,15 @@ export default function EditProfilePage() {
     useEffect(() => {
         async function loadProfile() {
             try {
-                const res = await fetch('/api/profile')
-                if (res.ok) {
-                    const data = await res.json()
-                    setGoalType(data.goalType || 'maintenance')
-                    setSex(data.sex || 'male')
-                    setAge(data.age?.toString() || '')
-                    setHeightCm(data.heightCm?.toString() || '')
-                    setCurrentWeight(data.currentWeight?.toString() || '')
-                    setTargetWeight(data.targetWeight?.toString() || '')
-                    setActivityLevel(data.activityLevel || 'moderate')
-                    setUnitSystem(data.unitSystem || 'metric')
-                }
+                const data = await apiClient.get<any>('/profile')
+                setGoalType(data.goalType || 'maintenance')
+                setSex(data.sex || 'male')
+                setAge(data.age?.toString() || '')
+                setHeightCm(data.heightCm?.toString() || '')
+                setCurrentWeight(data.currentWeight?.toString() || '')
+                setTargetWeight(data.targetWeight?.toString() || '')
+                setActivityLevel(data.activityLevel || 'moderate')
+                setUnitSystem(data.unitSystem || 'metric')
             } catch (error) {
                 console.error('Failed to load profile:', error)
             } finally {
@@ -158,26 +156,20 @@ export default function EditProfilePage() {
         try {
             const targets = calculateTargets()
 
-            const res = await fetch('/api/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    goalType,
-                    sex,
-                    age: parseInt(age) || null,
-                    heightCm: parseFloat(heightCm) || null,
-                    currentWeight: parseFloat(currentWeight) || null,
-                    targetWeight: parseFloat(targetWeight) || null,
-                    activityLevel,
-                    unitSystem,
-                    ...targets
-                })
+            await apiClient.post('/profile', {
+                goalType,
+                sex,
+                age: parseInt(age) || null,
+                heightCm: parseFloat(heightCm) || null,
+                currentWeight: parseFloat(currentWeight) || null,
+                targetWeight: parseFloat(targetWeight) || null,
+                activityLevel,
+                unitSystem,
+                ...targets
             })
 
-            if (res.ok) {
-                router.push('/settings')
-                router.refresh()
-            }
+            router.push('/settings')
+            router.refresh()
         } catch (error) {
             console.error('Failed to save:', error)
         } finally {

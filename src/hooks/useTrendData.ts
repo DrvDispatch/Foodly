@@ -1,4 +1,5 @@
 import useSWR from 'swr'
+import { apiFetcher } from '@/lib/api-client'
 import type { TimeRange } from '@/components/trends/TimeRangeSelector'
 
 interface TrendDataPoint {
@@ -42,12 +43,10 @@ interface TrendData {
     }
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json())
-
 export function useTrendData(range: TimeRange) {
     const { data, error, isLoading, mutate } = useSWR<TrendData>(
-        `/api/trends?range=${range}`,
-        fetcher,
+        `/trends?range=${range}`,
+        apiFetcher,
         {
             revalidateOnFocus: false,
             dedupingInterval: 30000 // 30 seconds

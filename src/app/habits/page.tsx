@@ -6,9 +6,8 @@ import { Activity, MessageCircle, Loader2, TrendingUp, Utensils, Calendar } from
 import useSWR from 'swr'
 
 import { cn } from '@/lib/utils'
+import { apiFetcher } from '@/lib/api-client'
 import { BottomNav } from '@/components/bottom-nav'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface HabitsData {
     activeDays: number
@@ -30,8 +29,8 @@ interface HabitsData {
 export default function HabitsPage() {
     const router = useRouter()
     const { data, isLoading, error } = useSWR<HabitsData>(
-        '/api/habits/summary',
-        fetcher,
+        '/habits/summary',
+        apiFetcher,
         { revalidateOnFocus: false }
     )
 

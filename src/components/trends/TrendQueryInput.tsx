@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Search, Loader2, X, Sparkles, Calendar, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import { getDay, parseISO } from 'date-fns'
 
 interface DataPoint {
@@ -50,13 +51,7 @@ export function TrendQueryInput({ dataPoints, goals, onFilteredData, onClear }: 
         setQuery(searchQuery)
 
         try {
-            const response = await fetch('/api/trends/query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: searchQuery, goals })
-            })
-
-            const filter: FilterResult = await response.json()
+            const filter = await apiClient.post<FilterResult>('/trends/query', { query: searchQuery, goals })
 
             if (filter.filterType === 'none') {
                 setActiveFilter(null)

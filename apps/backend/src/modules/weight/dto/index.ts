@@ -26,3 +26,23 @@ export class CreateWeightDto {
     @IsString()
     note?: string;
 }
+
+/**
+ * DTO for updating a weight entry
+ */
+export class UpdateWeightDto {
+    @IsOptional()
+    @IsNumber()
+    @Min(20)
+    @Max(500)
+    @Type(() => Number)
+    weight?: number;
+
+    @IsOptional()
+    @IsDateString()
+    date?: string;
+
+    @IsOptional()
+    @IsString()
+    note?: string | null;
+}

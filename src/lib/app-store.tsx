@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { apiClient } from './api-client'
+import { syncAuthState } from './auth-bridge'
 
 // ============================================================================
 // TYPES
@@ -175,13 +177,16 @@ export function AppBootstrapProvider({ children }: { children: React.ReactNode }
         setState(prev => ({ ...prev, isLoading: true, error: null }))
 
         try {
-            const res = await fetch('/api/bootstrap')
-
-            if (!res.ok) {
-                throw new Error('Bootstrap failed')
+            // If authenticated via NextAuth, sync JWT
+            if (status === 'authenticated') {
+                const session = await fetch('/api/auth/session').then(r => r.json())
+                await syncAuthState(session)
+            } else {
+                await syncAuthState(null)
             }
 
-            const data = await res.json()
+            // Call NestJS bootstrap endpoint
+            const data = await apiClient.get<any>('/bootstrap')
 
             if (!data.authenticated) {
                 setState(prev => ({
@@ -238,16 +243,15 @@ export function AppBootstrapProvider({ children }: { children: React.ReactNode }
             // This makes page data available instantly when navigating
             const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
             const apiPrefetches = [
-                { key: 'calendar_month', url: `/api/calendar/month?month=${currentMonth}` },
-                { key: 'coach_messages', url: '/api/coach/messages' },
-                { key: 'habits_summary', url: '/api/habits/summary' },
-                { key: 'health_weekly', url: '/api/health/weekly' },
-                { key: 'trends_history', url: '/api/weight/history' },
+                { key: 'calendar_month', url: `/calendar/month?month=${currentMonth}` },
+                { key: 'coach_messages', url: '/coach/messages' },
+                { key: 'habits_summary', url: '/habits/summary' },
+                { key: 'health_weekly', url: '/health/weekly' },
+                { key: 'trends_history', url: '/weight/history' },
             ]
 
             apiPrefetches.forEach(({ key, url }) => {
-                fetch(url)
-                    .then(res => res.ok ? res.json() : null)
+                apiClient.get(url)
                     .then(data => {
                         if (data) {
                             // Store in global cache for pages to read

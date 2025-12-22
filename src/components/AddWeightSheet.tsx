@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Scale, Loader2 } from 'lucide-react'
 import { useSWRConfig } from 'swr'
+import { apiClient } from '@/lib/api-client'
 
 interface AddWeightSheetProps {
     isOpen: boolean
@@ -26,23 +27,17 @@ export function AddWeightSheet({ isOpen, onClose, onSuccess }: AddWeightSheetPro
             // Convert from imperial if needed
             const weightKg = unitSystem === 'metric' ? weightValue : weightValue / 2.205
 
-            const res = await fetch('/api/weight', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    weight: weightKg,
-                    note: note || undefined
-                })
+            await apiClient.post('/weight', {
+                weight: weightKg,
+                note: note || undefined
             })
 
-            if (res.ok) {
-                setWeight('')
-                setNote('')
-                // Revalidate all weight-related SWR caches
-                mutate((key) => typeof key === 'string' && key.startsWith('/api/weight'))
-                onSuccess?.()
-                onClose()
-            }
+            setWeight('')
+            setNote('')
+            // Revalidate all weight-related SWR caches (now using NestJS paths)
+            mutate((key) => typeof key === 'string' && key.startsWith('/weight'))
+            onSuccess?.()
+            onClose()
         } catch (error) {
             console.error('Failed to add weight:', error)
         } finally {

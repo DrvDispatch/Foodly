@@ -49,15 +49,19 @@ export class MomentumService {
             orderBy: { mealTime: 'desc' },
         });
 
+        // Type alias for meal with items
+        type MealWithItems = typeof meals[number];
+        type MealItem = MealWithItems['items'][number];
+
         // Group meals by day
         const dailyData: Map<string, { calories: number; protein: number; mealCount: number }> = new Map();
 
-        meals.forEach((meal) => {
+        meals.forEach((meal: MealWithItems) => {
             const dayKey = format(meal.mealTime, 'yyyy-MM-dd');
             const existing = dailyData.get(dayKey) || { calories: 0, protein: 0, mealCount: 0 };
 
-            const mealCalories = meal.items.reduce((sum, item) => sum + (item.calories || 0), 0);
-            const mealProtein = meal.items.reduce((sum, item) => sum + (item.protein || 0), 0);
+            const mealCalories = meal.items.reduce((sum: number, item: MealItem) => sum + (item.calories || 0), 0);
+            const mealProtein = meal.items.reduce((sum: number, item: MealItem) => sum + (item.protein || 0), 0);
 
             dailyData.set(dayKey, {
                 calories: existing.calories + mealCalories,

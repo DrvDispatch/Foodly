@@ -149,13 +149,18 @@ export class TodayService {
 
         const profile = user?.profile;
 
+        // Type aliases for meals
+        type MealWithDetails = typeof meals[number];
+        type MealItem = MealWithDetails['items'][number];
+        type GroupedMeal = typeof recentMeals7d[number];
+
         // Calculate daily summary (server-side aggregation)
         let totalCalories = 0;
         let totalProtein = 0;
         let totalCarbs = 0;
         let totalFat = 0;
 
-        const formattedMeals = meals.map((meal) => {
+        const formattedMeals = meals.map((meal: MealWithDetails) => {
             const snapshot = meal.snapshots[0] || null;
             if (snapshot) {
                 totalCalories += snapshot.calories;
@@ -181,7 +186,7 @@ export class TodayService {
                         confidence: snapshot.confidence,
                     }
                     : null,
-                items: meal.items.map((item) => ({
+                items: meal.items.map((item: MealItem) => ({
                     id: item.id,
                     name: item.name,
                     portion: item.portionDesc,
@@ -203,7 +208,7 @@ export class TodayService {
 
         // Calculate streak (consecutive days with meals)
         const daysWithMeals = new Set(
-            recentMeals7d.map((m) => format(m.mealTime, 'yyyy-MM-dd')),
+            recentMeals7d.map((m: GroupedMeal) => format(m.mealTime, 'yyyy-MM-dd')),
         );
         let streak = 0;
         for (let i = 0; i < 7; i++) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Scale, Plus, Trash2, Edit2, ArrowLeft, TrendingUp, TrendingDown, Minus, Calendar, X, Check } from 'lucide-react'
 import { format, parseISO, isValid } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import { BottomNav } from '@/components/bottom-nav'
 
 interface WeightEntry {
@@ -33,9 +34,7 @@ export default function WeightPage() {
 
     const fetchEntries = async () => {
         try {
-            const res = await fetch('/api/weight/history')
-            if (!res.ok) throw new Error('Failed to load')
-            const data = await res.json()
+            const data = await apiClient.get<{ entries: WeightEntry[] }>('/weight/history')
             setEntries(data.entries || [])
         } catch (err) {
             setError('Failed to load weight history')
@@ -62,20 +61,19 @@ export default function WeightPage() {
         setIsSaving(true)
 
         try {
-            const method = editingId ? 'PUT' : 'POST'
-            const url = editingId ? `/api/weight/${editingId}` : '/api/weight'
-
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            if (editingId) {
+                await apiClient.put(`/weight/${editingId}`, {
                     weight: parseFloat(formWeight),
                     date: formDate,
                     note: formNote || null
                 })
-            })
-
-            if (!res.ok) throw new Error('Failed to save')
+            } else {
+                await apiClient.post('/weight', {
+                    weight: parseFloat(formWeight),
+                    date: formDate,
+                    note: formNote || null
+                })
+            }
 
             await fetchEntries()
             resetForm()
@@ -90,8 +88,7 @@ export default function WeightPage() {
         if (!confirm('Delete this weight entry?')) return
 
         try {
-            const res = await fetch(`/api/weight/${id}`, { method: 'DELETE' })
-            if (!res.ok) throw new Error('Failed to delete')
+            await apiClient.delete(`/weight/${id}`)
             setEntries(prev => prev.filter(e => e.id !== id))
         } catch (err) {
             setError('Failed to delete entry')

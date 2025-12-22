@@ -90,6 +90,46 @@ export class WeightService {
     }
 
     /**
+     * Update a weight entry
+     */
+    async updateWeightEntry(userId: string, entryId: string, dto: { weight?: number; date?: string; note?: string | null }) {
+        // Verify ownership
+        const existing = await this.prisma.weightEntry.findFirst({
+            where: { id: entryId, userId },
+        });
+
+        if (!existing) {
+            throw new NotFoundException('Weight entry not found');
+        }
+
+        // Update the entry
+        const entry = await this.prisma.weightEntry.update({
+            where: { id: entryId },
+            data: {
+                ...(dto.weight !== undefined && { weight: dto.weight }),
+                ...(dto.date !== undefined && { date: new Date(dto.date) }),
+                ...(dto.note !== undefined && { note: dto.note }),
+            },
+        });
+
+        // Update current weight in profile if this is the most recent entry
+        if (dto.weight !== undefined) {
+            const latestEntry = await this.prisma.weightEntry.findFirst({
+                where: { userId },
+                orderBy: { date: 'desc' },
+            });
+            if (latestEntry?.id === entryId) {
+                await this.prisma.profile.update({
+                    where: { userId },
+                    data: { currentWeight: dto.weight },
+                });
+            }
+        }
+
+        return { success: true, entry };
+    }
+
+    /**
      * Get weight history (more entries)
      */
     async getWeightHistory(userId: string) {

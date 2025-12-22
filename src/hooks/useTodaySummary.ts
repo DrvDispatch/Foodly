@@ -9,8 +9,7 @@
 
 import useSWR from 'swr'
 import { format } from 'date-fns'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
+import { apiFetcher } from '@/lib/api-client'
 
 export interface TodayMeal {
     id: string
@@ -78,8 +77,8 @@ export function useTodaySummary(selectedDate: Date) {
     const dateKey = format(selectedDate, 'yyyy-MM-dd')
 
     const { data, error, isLoading, mutate } = useSWR<TodaySummary>(
-        `/api/today/summary?date=${dateKey}`,
-        fetcher,
+        `/today/summary?date=${dateKey}`,
+        apiFetcher,
         {
             revalidateOnFocus: false,
             dedupingInterval: 5000, // Prevent duplicate requests within 5s

@@ -7,7 +7,7 @@ import { startOfDay, endOfDay, format } from 'date-fns';
 /**
  * Timeline meal with running totals
  */
-interface TimelineMeal {
+export interface TimelineMeal {
     id: string;
     time: string;
     type: string;
@@ -73,13 +73,16 @@ export class TimelineService {
             orderBy: { mealTime: 'asc' },
         });
 
+        // Type alias for meal with snapshots
+        type MealWithSnapshots = typeof meals[number];
+
         // Calculate running totals
         let runningCalories = 0;
         let runningProtein = 0;
         let runningCarbs = 0;
         let runningFat = 0;
 
-        const timelineMeals: TimelineMeal[] = meals.map((meal, index) => {
+        const timelineMeals: TimelineMeal[] = meals.map((meal: MealWithSnapshots, index: number) => {
             const snapshot = meal.snapshots[0];
             const calories = snapshot?.calories || 0;
             const protein = snapshot?.protein || 0;

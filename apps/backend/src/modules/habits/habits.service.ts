@@ -37,6 +37,9 @@ export class HabitsService {
             orderBy: { mealTime: 'asc' },
         });
 
+        // Type alias for meal
+        type MealType = typeof meals[number];
+
         // Calculate active days
         const daysWithMeals = new Set<string>();
         const mealsByType: Record<string, number> = {
@@ -46,7 +49,7 @@ export class HabitsService {
             snack: 0,
         };
 
-        meals.forEach((meal) => {
+        meals.forEach((meal: MealType) => {
             const dayKey = format(meal.mealTime, 'yyyy-MM-dd');
             daysWithMeals.add(dayKey);
             if (meal.type in mealsByType) {

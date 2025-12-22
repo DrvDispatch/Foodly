@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Sparkles, HelpCircle, Loader2 } from 'lucide-react'
+import { apiClient } from '@/lib/api-client'
 
 interface AITransparencySectionProps {
     className?: string
@@ -16,11 +17,7 @@ export function AITransparencySection({ className }: AITransparencySectionProps)
     const handleExplainTargets = async () => {
         setIsExplaining(true)
         try {
-            const res = await fetch('/api/profile/explain', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            const data = await res.json()
+            const data = await apiClient.post<{ explanation: string }>('/profile/explain')
             setExplanation(data.explanation)
         } catch (error) {
             setExplanation('Unable to explain targets at this time.')

@@ -82,12 +82,15 @@ export const authOptions: NextAuthOptions = {
             }
             if (account?.provider === 'google') {
                 token.accessToken = account.access_token
+                token.idToken = account.id_token
             }
             return token
         },
         async session({ session, token }) {
             if (session.user) {
                 session.user.id = token.id as string
+                // @ts-ignore - Adding custom property
+                session.idToken = token.idToken as string
             }
 
             // Check if user has completed onboarding

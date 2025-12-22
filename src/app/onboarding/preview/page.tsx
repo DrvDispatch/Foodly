@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { signIn, useSession } from 'next-auth/react'
 import { Sparkles, Flame, Beef, Wheat, Droplets, Loader2, CheckCircle, Edit2 } from 'lucide-react'
 import { cn, calculateBMR, calculateTDEE, calculateTargetCalories, calculateMacroTargets, ACTIVITY_MULTIPLIERS, type ActivityLevel } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 
 export default function PreviewPage() {
     const router = useRouter()
@@ -69,32 +70,24 @@ export default function PreviewPage() {
             const activity = sessionStorage.getItem('onboarding_activity')
             const units = sessionStorage.getItem('onboarding_units')
 
-            // Save to database
-            const res = await fetch('/api/profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sex,
-                    age: parseInt(age || '30'),
-                    heightCm: parseFloat(height || '170'),
-                    currentWeight: parseFloat(weight || '70'),
-                    targetWeight: parseFloat(targetWeight || weight || '70'),
-                    weeklyPace: parseFloat(pace || '0.5'),
-                    activityLevel: activity,
-                    goalType: goal,
-                    unitSystem: units,
-                    maintenanceCal: isEditing ? editedTargets.maintenanceCal : targets.maintenanceCal,
-                    targetCal: isEditing ? editedTargets.targetCal : targets.targetCal,
-                    proteinTarget: isEditing ? editedTargets.protein : targets.protein,
-                    carbTarget: isEditing ? editedTargets.carbs : targets.carbs,
-                    fatTarget: isEditing ? editedTargets.fat : targets.fat,
-                    onboarded: true,
-                }),
+            // Save to database via NestJS backend
+            await apiClient.post('/profile', {
+                sex,
+                age: parseInt(age || '30'),
+                heightCm: parseFloat(height || '170'),
+                currentWeight: parseFloat(weight || '70'),
+                targetWeight: parseFloat(targetWeight || weight || '70'),
+                weeklyPace: parseFloat(pace || '0.5'),
+                activityLevel: activity,
+                goalType: goal,
+                unitSystem: units,
+                maintenanceCal: isEditing ? editedTargets.maintenanceCal : targets.maintenanceCal,
+                targetCal: isEditing ? editedTargets.targetCal : targets.targetCal,
+                proteinTarget: isEditing ? editedTargets.protein : targets.protein,
+                carbTarget: isEditing ? editedTargets.carbs : targets.carbs,
+                fatTarget: isEditing ? editedTargets.fat : targets.fat,
+                onboarded: true,
             })
-
-            if (!res.ok) {
-                throw new Error('Failed to save profile')
-            }
 
             // Clear session storage
             sessionStorage.removeItem('onboarding_goal')

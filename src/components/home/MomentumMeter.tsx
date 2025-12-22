@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { Flame, TrendingUp, TrendingDown, Minus, Zap, Target, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useSWR from 'swr'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
+import { apiFetcher } from '@/lib/api-client'
 
 interface MomentumData {
     level: 'strong' | 'building' | 'steady' | 'starting'
@@ -62,7 +61,7 @@ interface MomentumMeterProps {
 }
 
 export function MomentumMeter({ className, compact = false }: MomentumMeterProps) {
-    const { data, isLoading } = useSWR<MomentumData>('/api/momentum', fetcher, {
+    const { data, isLoading } = useSWR<MomentumData>('/momentum', apiFetcher, {
         revalidateOnFocus: false,
         dedupingInterval: 60000 // Cache for 1 minute
     })
@@ -183,7 +182,7 @@ export function MomentumMeter({ className, compact = false }: MomentumMeterProps
  * MomentumBadge - A minimal inline badge for showing momentum
  */
 export function MomentumBadge({ className }: { className?: string }) {
-    const { data } = useSWR<MomentumData>('/api/momentum', fetcher, {
+    const { data } = useSWR<MomentumData>('/momentum', apiFetcher, {
         revalidateOnFocus: false
     })
 

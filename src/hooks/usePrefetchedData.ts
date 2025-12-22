@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { getCachedData, setCachedData } from '@/lib/app-store'
+import { apiClient } from '@/lib/api-client'
 
 interface UsePrefetchedDataOptions {
     /** Cache key used during bootstrap prefetch */
@@ -56,14 +57,9 @@ export function usePrefetchedData<T>({
         }, loadingDelay)
 
         try {
-            const res = await fetch(apiUrl)
+            const freshData: T = await apiClient.get(apiUrl)
             clearTimeout(loadingTimer)
 
-            if (!res.ok) {
-                throw new Error(`Failed to fetch ${apiUrl}`)
-            }
-
-            const freshData: T = await res.json()
             setData(freshData)
             setError(null)
 
@@ -104,7 +100,7 @@ export function usePrefetchedData<T>({
 export function usePrefetchedCalendar() {
     return usePrefetchedData({
         cacheKey: 'calendar_month',
-        apiUrl: '/api/calendar/month'
+        apiUrl: '/calendar/month'
     })
 }
 
@@ -112,7 +108,7 @@ export function usePrefetchedCalendar() {
 export function usePrefetchedCoach() {
     return usePrefetchedData({
         cacheKey: 'coach_messages',
-        apiUrl: '/api/coach/messages'
+        apiUrl: '/coach/messages'
     })
 }
 
@@ -120,7 +116,7 @@ export function usePrefetchedCoach() {
 export function usePrefetchedHabits() {
     return usePrefetchedData({
         cacheKey: 'habits_summary',
-        apiUrl: '/api/habits/summary'
+        apiUrl: '/habits/summary'
     })
 }
 
@@ -128,7 +124,7 @@ export function usePrefetchedHabits() {
 export function usePrefetchedHealth() {
     return usePrefetchedData({
         cacheKey: 'health_weekly',
-        apiUrl: '/api/health/weekly'
+        apiUrl: '/health/weekly'
     })
 }
 
@@ -136,6 +132,6 @@ export function usePrefetchedHealth() {
 export function usePrefetchedTrends() {
     return usePrefetchedData({
         cacheKey: 'trends_history',
-        apiUrl: '/api/weight/history'
+        apiUrl: '/weight/history'
     })
 }

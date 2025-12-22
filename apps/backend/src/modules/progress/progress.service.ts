@@ -68,9 +68,12 @@ export class ProgressService {
             orderBy: { mealTime: 'desc' },
         });
 
+        // Type alias for meal
+        type MealType = typeof meals[number];
+
         // Group by day
         const dailyMeals: Map<string, number> = new Map();
-        meals.forEach((meal) => {
+        meals.forEach((meal: MealType) => {
             const dayKey = format(meal.mealTime, 'yyyy-MM-dd');
             dailyMeals.set(dayKey, (dailyMeals.get(dayKey) || 0) + 1);
         });

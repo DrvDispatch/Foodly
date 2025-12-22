@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { OAuth2Client } from 'google-auth-library';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -346,4 +347,101 @@ export class AuthService {
             throw new UnauthorizedException('Invalid refresh token');
         }
     }
+
+    /**
+     * Exchange NextAuth session for NestJS JWT
+     * This allows OAuth users (Google) to get a JWT for API calls
+     * Creates user if they don't exist (first-time OAuth login)
+     */
+    async exchangeSession(dto: { email: string; name?: string; sessionUserId?: string }) {
+        const { email, name, sessionUserId } = dto;
+
+        // Find user by email
+        let user = await this.prisma.user.findUnique({
+            where: { email },
+            include: { profile: true },
+        });
+
+        // If user doesn't exist, create them (first-time OAuth)
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    id: sessionUserId || undefined, // Use NextAuth's ID if provided
+                    email,
+                    name: name || null,
+                    profile: {
+                        create: {
+                            onboarded: false,
+                        },
+                    },
+                },
+                include: { profile: true },
+            });
+        }
+
+        return this.generateAuthResponse(user);
+    }
+
+    /**
+     * Verify Google ID Token
+     */
+    async verifyGoogleToken(token: string) {
+        try {
+            const client = new OAuth2Client(
+                this.configService.get('GOOGLE_CLIENT_ID')
+            );
+
+            const ticket = await client.verifyIdToken({
+                idToken: token,
+                audience: this.configService.get('GOOGLE_CLIENT_ID'),
+            });
+
+            const payload = ticket.getPayload();
+            if (!payload || !payload.email) {
+                throw new UnauthorizedException('Invalid Google token');
+            }
+
+            return {
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture,
+                sub: payload.sub
+            };
+        } catch (error) {
+            console.error('Google token verification failed:', error);
+            throw new UnauthorizedException('Invalid Google token');
+        }
+    }
+
+    /**
+     * Login with Google ID Token
+     */
+    async googleLogin(token: string) {
+        const googleUser = await this.verifyGoogleToken(token);
+
+        // Find or create user
+        let user = await this.prisma.user.findUnique({
+            where: { email: googleUser.email },
+            include: { profile: true },
+        });
+
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    email: googleUser.email,
+                    name: googleUser.name,
+                    image: googleUser.picture,
+                    profile: {
+                        create: {
+                            onboarded: false,
+                        },
+                    },
+                },
+                include: { profile: true },
+            });
+        }
+
+        return this.generateAuthResponse(user);
+    }
 }
+

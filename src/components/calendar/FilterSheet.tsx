@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Sparkles, Loader2, Search, History, Clock, Lightbulb, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 
 interface FilterSheetProps {
     isOpen: boolean
@@ -84,17 +85,8 @@ export function FilterSheet({
         setAiQuery(searchQuery)
 
         try {
-            const response = await fetch('/api/calendar/ai-filter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: searchQuery.trim(), month: monthKey })
-            })
+            const data = await apiClient.post<{ matchingDays: string[]; interpretation: string }>('/calendar/ai-filter', { query: searchQuery.trim(), month: monthKey })
 
-            if (!response.ok) {
-                throw new Error('AI filter failed')
-            }
-
-            const data = await response.json()
             setAiInterpretation(data.interpretation)
             saveToHistory(searchQuery.trim())
 

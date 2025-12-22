@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation'
 import { ChevronRight, TrendingUp, TrendingDown, Minus, Activity, Heart, Scale, Utensils, Sparkles, ChevronLeft } from 'lucide-react'
 import useSWR from 'swr'
 import { cn } from '@/lib/utils'
+import { apiFetcher } from '@/lib/api-client'
 import { ProgressMeter } from './ProgressMeter'
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 interface DashboardCardsProps {
     selectedDate: Date
@@ -31,10 +30,10 @@ export function DashboardCards({ selectedDate, summary, goals, onNutritionClick 
     const [isFlipped, setIsFlipped] = useState(false)
     const touchStartX = useRef(0)
 
-    // Fetch data
-    const { data: healthData } = useSWR('/api/health/weekly', fetcher, { revalidateOnFocus: false })
-    const { data: habitsData } = useSWR('/api/habits/summary', fetcher, { revalidateOnFocus: false })
-    const { data: weightData } = useSWR('/api/weight', fetcher, { revalidateOnFocus: false })
+    // Fetch data using apiClient (NestJS backend)
+    const { data: healthData } = useSWR('/health/weekly', apiFetcher, { revalidateOnFocus: false })
+    const { data: habitsData } = useSWR('/habits/summary', apiFetcher, { revalidateOnFocus: false })
+    const { data: weightData } = useSWR('/weight', apiFetcher, { revalidateOnFocus: false })
 
     // Calculations - rounded properly
     const caloriePercent = Math.min(Math.round((summary.calories / goals.calories) * 100), 999)

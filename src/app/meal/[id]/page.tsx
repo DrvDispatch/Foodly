@@ -11,6 +11,7 @@ import { ConfidenceChip } from '@/components/confidence-chip'
 import { useDetailedMealInsight } from '@/hooks/useInsights'
 import { UserContext, mapLegacyGoalType, parseSecondaryFocuses } from '@/lib/insights'
 import { formatTime, getMealTypeLabel, cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import NextImage from 'next/image'
 
 interface MealItem {
@@ -87,16 +88,7 @@ export default function MealDetailPage() {
             if (!mealId || status !== 'authenticated') return
 
             try {
-                const res = await fetch(`/api/meals/${mealId}`)
-                if (!res.ok) {
-                    if (res.status === 404) {
-                        setError('Meal not found')
-                    } else {
-                        throw new Error('Failed to fetch meal')
-                    }
-                    return
-                }
-                const data = await res.json()
+                const data = await apiClient.get<Meal>(`/meals/${mealId}`)
                 setMeal(data)
 
                 // Initialize edit state
@@ -111,9 +103,8 @@ export default function MealDetailPage() {
                 // If still analyzing, poll for updates
                 if (data.isAnalyzing) {
                     const pollInterval = setInterval(async () => {
-                        const pollRes = await fetch(`/api/meals/${mealId}`)
-                        if (pollRes.ok) {
-                            const pollData = await pollRes.json()
+                        try {
+                            const pollData = await apiClient.get<Meal>(`/meals/${mealId}`)
                             setMeal(pollData)
                             if (!pollData.isAnalyzing) {
                                 // Update edit state with new values
@@ -125,13 +116,17 @@ export default function MealDetailPage() {
                                 }
                                 clearInterval(pollInterval)
                             }
-                        }
+                        } catch { /* ignore polling errors */ }
                     }, 2000)
 
                     return () => clearInterval(pollInterval)
                 }
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Something went wrong')
+            } catch (err: any) {
+                if (err.message?.includes('404')) {
+                    setError('Meal not found')
+                } else {
+                    setError(err instanceof Error ? err.message : 'Something went wrong')
+                }
             } finally {
                 setIsLoading(false)
             }
@@ -145,21 +140,18 @@ export default function MealDetailPage() {
         async function fetchProfile() {
             if (status !== 'authenticated') return
             try {
-                const res = await fetch('/api/profile')
-                if (res.ok) {
-                    const profile = await res.json()
-                    setUserContext({
-                        goalType: mapLegacyGoalType(profile.goalType),
-                        secondaryFocuses: parseSecondaryFocuses(profile.secondaryFocus),
-                        sex: profile.sex,
-                        age: profile.age,
-                        activityLevel: profile.activityLevel,
-                        targetCalories: profile.targetCal || 2000,
-                        targetProtein: profile.proteinTarget || 150,
-                        targetCarbs: profile.carbTarget || 200,
-                        targetFat: profile.fatTarget || 65,
-                    })
-                }
+                const profile = await apiClient.get<any>('/profile')
+                setUserContext({
+                    goalType: mapLegacyGoalType(profile.goalType),
+                    secondaryFocuses: parseSecondaryFocuses(profile.secondaryFocus),
+                    sex: profile.sex,
+                    age: profile.age,
+                    activityLevel: profile.activityLevel,
+                    targetCalories: profile.targetCal || 2000,
+                    targetProtein: profile.proteinTarget || 150,
+                    targetCarbs: profile.carbTarget || 200,
+                    targetFat: profile.fatTarget || 65,
+                })
             } catch (err) {
                 console.error('Failed to fetch profile:', err)
             }
@@ -187,21 +179,14 @@ export default function MealDetailPage() {
         setIsSaving(true)
 
         try {
-            const res = await fetch(`/api/meals/${mealId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    description: editDescription.trim() || null,
-                    calories: editCalories,
-                    protein: editProtein,
-                    carbs: editCarbs,
-                    fat: editFat,
-                }),
+            const updated = await apiClient.patch<Meal>(`/meals/${mealId}`, {
+                description: editDescription.trim() || null,
+                calories: editCalories,
+                protein: editProtein,
+                carbs: editCarbs,
+                fat: editFat,
             })
 
-            if (!res.ok) throw new Error('Failed to save')
-
-            const updated = await res.json()
             setMeal(updated)
             setIsEditing(false)
         } catch (err) {
@@ -217,20 +202,15 @@ export default function MealDetailPage() {
         setIsReanalyzing(true)
 
         try {
-            const res = await fetch(`/api/meals/${mealId}/reanalyze`, {
-                method: 'POST',
-            })
-
-            if (!res.ok) throw new Error('Failed to reanalyze')
+            await apiClient.post(`/meals/${mealId}/reanalyze`)
 
             // Update meal state to show analyzing
             setMeal(prev => prev ? { ...prev, isAnalyzing: true } : null)
 
             // Poll for updates
             const poll = async () => {
-                const pollRes = await fetch(`/api/meals/${mealId}`)
-                if (pollRes.ok) {
-                    const pollData = await pollRes.json()
+                try {
+                    const pollData = await apiClient.get<Meal>(`/meals/${mealId}`)
                     setMeal(pollData)
                     if (pollData.activeSnapshot) {
                         setEditCalories(pollData.activeSnapshot.calories)
@@ -241,7 +221,7 @@ export default function MealDetailPage() {
                     if (pollData.isAnalyzing) {
                         setTimeout(poll, 2000)
                     }
-                }
+                } catch { /* ignore polling errors */ }
             }
             poll()
         } catch (err) {
@@ -257,12 +237,7 @@ export default function MealDetailPage() {
         setIsDeleting(true)
 
         try {
-            const res = await fetch(`/api/meals/${mealId}`, {
-                method: 'DELETE',
-            })
-
-            if (!res.ok) throw new Error('Failed to delete')
-
+            await apiClient.delete(`/meals/${mealId}`)
             router.push('/')
         } catch (err) {
             console.error('Delete error:', err)

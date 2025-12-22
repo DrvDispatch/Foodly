@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { X, ChevronRight, Plus } from 'lucide-react'
 import useSWR from 'swr'
 import { cn } from '@/lib/utils'
+import { apiClient, apiFetcher } from '@/lib/api-client'
 import { MealCard } from '@/components/meal-card'
 import { GoalRing } from '@/components/goal-ring'
 
@@ -23,13 +24,19 @@ interface DayDetailSheetProps {
     onClose: () => void
 }
 
+interface DayData {
+    context?: { tags?: string[] }
+    meals?: any[]
+    summary?: { mealCount?: number }
+}
+
 export function DayDetailSheet({ dayKey, onClose }: DayDetailSheetProps) {
     const [isClosing, setIsClosing] = useState(false)
 
     // Fetch day details
-    const { data, mutate } = useSWR(
-        dayKey ? `/api/calendar/day?dayKey=${dayKey}` : null,
-        (url) => fetch(url).then(res => res.json())
+    const { data, mutate } = useSWR<DayData>(
+        dayKey ? `/calendar/day?dayKey=${dayKey}` : null,
+        apiFetcher
     )
 
     // Context editing state
@@ -72,13 +79,9 @@ export function DayDetailSheet({ dayKey, onClose }: DayDetailSheetProps) {
 
         // Optimistic / Fire-and-forget update
         try {
-            await fetch('/api/calendar/context', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    dayKey,
-                    tags: newTags
-                })
+            await apiClient.put('/calendar/context', {
+                dayKey,
+                tags: newTags
             })
             mutate() // Revalidate to be sure
         } catch (e) {

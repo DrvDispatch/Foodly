@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, X, Loader2, Sparkles, ImagePlus, Send, Clock, Calendar, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import NextImage from 'next/image'
 
 interface QuickAddProps {
@@ -113,18 +114,12 @@ export function QuickAdd({ isOpen, onClose, onSuccess }: QuickAddProps) {
             // Combine date and time into ISO string
             const dateTime = new Date(`${mealDate}T${mealTime}`)
 
-            const res = await fetch('/api/meals', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    description: description.trim() || undefined,
-                    photoBase64: photos[0]?.base64 || undefined,
-                    additionalPhotos: photos.slice(1).map(p => p.base64),
-                    mealTime: dateTime.toISOString(),
-                }),
+            await apiClient.post('/meals', {
+                description: description.trim() || undefined,
+                photoBase64: photos[0]?.base64 || undefined,
+                additionalPhotos: photos.slice(1).map(p => p.base64),
+                mealTime: dateTime.toISOString(),
             })
-
-            if (!res.ok) throw new Error('Failed to log meal')
 
             // Show success feedback briefly
             setShowSuccess(true)

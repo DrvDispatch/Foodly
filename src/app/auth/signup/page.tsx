@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles, Mail, Lock, User, Eye, EyeOff, ArrowRight, Chrome, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import NextImage from 'next/image'
 
 export default function SignUpPage() {
@@ -36,21 +37,11 @@ export default function SignUpPage() {
         }
 
         try {
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: formData.name,
-                    email: formData.email,
-                    password: formData.password,
-                }),
+            await apiClient.post('/auth/register', {
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
             })
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Something went wrong')
-            }
 
             setSuccess(true)
 

@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto } from './dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto, ExchangeSessionDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -64,5 +64,25 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async refresh(@Body() dto: RefreshTokenDto) {
         return this.authService.refreshToken(dto.refreshToken);
+    }
+
+    /**
+     * POST /api/auth/exchange
+     * Exchange NextAuth session for NestJS JWT
+     * Used for OAuth users (Google) who authenticate via NextAuth
+     */
+    @Post('exchange')
+    @HttpCode(HttpStatus.OK)
+    async exchange(@Body() dto: ExchangeSessionDto) {
+        return this.authService.exchangeSession(dto);
+    }
+    /**
+     * POST /api/auth/google
+     * Login with Google ID Token (Secure)
+     */
+    @Post('google')
+    @HttpCode(HttpStatus.OK)
+    async googleLogin(@Body() dto: { token: string }) {
+        return this.authService.googleLogin(dto.token);
     }
 }

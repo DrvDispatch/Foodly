@@ -147,13 +147,16 @@ export class BootstrapService {
 
         const profile = user.profile;
 
+        // Type alias for meals with snapshots
+        type MealWithSnapshots = typeof todayMeals[number];
+
         // Calculate today's totals
         let totalCalories = 0;
         let totalProtein = 0;
         let totalCarbs = 0;
         let totalFat = 0;
 
-        todayMeals.forEach((meal) => {
+        todayMeals.forEach((meal: MealWithSnapshots) => {
             const snapshot = meal.snapshots[0];
             if (snapshot) {
                 totalCalories += snapshot.calories;
@@ -171,9 +174,14 @@ export class BootstrapService {
             fat: profile?.fatTarget || 65,
         };
 
+        // Type alias for grouped meals
+        type GroupedMeal = typeof recentMealsCount[number];
+        // Type alias for calendar summaries
+        type CalendarSummary = typeof calendarSummaries[number];
+
         // Calculate streak
         const daysWithMeals = new Set(
-            recentMealsCount.map((m) => format(m.mealTime, 'yyyy-MM-dd'))
+            recentMealsCount.map((m: GroupedMeal) => format(m.mealTime, 'yyyy-MM-dd'))
         );
         let streak = 0;
         for (let i = 0; i < 7; i++) {
@@ -210,7 +218,7 @@ export class BootstrapService {
                 protein: Math.round(totalProtein * 10) / 10,
                 carbs: Math.round(totalCarbs * 10) / 10,
                 fat: Math.round(totalFat * 10) / 10,
-                hasAnalyzing: todayMeals.some((m) => m.isAnalyzing),
+                hasAnalyzing: todayMeals.some((m: MealWithSnapshots) => m.isAnalyzing),
             },
 
             // Weight
@@ -229,7 +237,7 @@ export class BootstrapService {
             // Calendar (light summary for month view)
             calendar: {
                 month: format(now, 'yyyy-MM'),
-                days: calendarSummaries.map((day) => ({
+                days: calendarSummaries.map((day: CalendarSummary) => ({
                     date: day.dayKey,
                     calories: day.calories,
                     mealCount: day.mealCount,
