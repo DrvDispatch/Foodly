@@ -55,6 +55,16 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 }
 
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  code      String   // 6-digit verification code
+  expires   DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([email])
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -89,6 +99,7 @@ model Profile {
   age            Int?
   heightCm       Float?
   currentWeight  Float?
+  startingWeight Float?   // Baseline from onboarding, never overwritten by weight logs
   targetWeight   Float?
   activityLevel  String?  // sedentary, light, moderate, active, athlete
   goalType       String?  // fat_loss, maintenance, muscle_gain, strength, recomp, health
@@ -293,4 +304,20 @@ model HealthReport {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, endDate])
+}
+
+// Generic AI response cache with TTL
+model AICache {
+  id         String   @id @default(cuid())
+  userId     String
+  cacheType  String   // "timeline_reflection", "health_insight", "meal_insight"
+  cacheKey   String   // Date or unique identifier for the cached content
+  content    String   // The cached AI response
+  dataHash   String?  // Hash of input data to detect changes
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime // TTL expiration time
+
+  @@unique([userId, cacheType, cacheKey])
+  @@index([userId, cacheType, cacheKey])
+  @@index([expiresAt])
 }

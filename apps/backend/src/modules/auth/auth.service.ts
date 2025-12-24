@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { generateDemoUserId } from '@nutri/shared';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './dto';
 import { JwtPayload } from '@nutri/shared';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
         private prisma: PrismaService,
         private jwtService: JwtService,
         private configService: ConfigService,
+        private emailService: EmailService,
     ) { }
 
     /**
@@ -51,17 +53,13 @@ export class AuthService {
                     },
                 },
             },
-            select: {
-                id: true,
-                name: true,
-                email: true,
+            include: {
+                profile: true,
             },
         });
 
-        return {
-            message: 'Account created successfully',
-            user,
-        };
+        // Return tokens like login - enables authenticated API calls immediately
+        return this.generateAuthResponse(user);
     }
 
     /**
@@ -232,9 +230,8 @@ export class AuthService {
             },
         });
 
-        // In production, send email here with reset link
-        // For now, log the token (remove in production)
-        console.log(`Password reset token for ${email}: ${resetToken}`);
+        // Send password reset email
+        await this.emailService.sendPasswordResetEmail(email, resetToken);
 
         return {
             message: 'If an account exists with this email, you will receive a password reset link.',
@@ -442,6 +439,99 @@ export class AuthService {
         }
 
         return this.generateAuthResponse(user);
+    }
+
+    // =========================================================================
+    // EMAIL VERIFICATION (Inline during signup)
+    // =========================================================================
+
+    /**
+     * Send 6-digit verification code to email
+     */
+    async sendVerificationCode(email: string) {
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new BadRequestException('Invalid email format');
+        }
+
+        // Check if email is already registered
+        const existingUser = await this.prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (existingUser) {
+            throw new BadRequestException('An account with this email already exists');
+        }
+
+        // Generate 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Delete any existing tokens for this email
+        await this.prisma.emailVerificationToken.deleteMany({
+            where: { email },
+        });
+
+        // Create new token (expires in 10 minutes)
+        await this.prisma.emailVerificationToken.create({
+            data: {
+                email,
+                code,
+                expires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+            },
+        });
+
+        // Send verification email
+        await this.emailService.sendVerificationEmail(email, code);
+
+        return {
+            message: 'Verification code sent to your email',
+        };
+    }
+
+    /**
+     * Verify the 6-digit code
+     */
+    async verifyCode(email: string, code: string) {
+        // Find valid token
+        const token = await this.prisma.emailVerificationToken.findFirst({
+            where: {
+                email,
+                code,
+                expires: { gt: new Date() },
+            },
+        });
+
+        if (!token) {
+            throw new BadRequestException('Invalid or expired verification code');
+        }
+
+        // Don't delete the token yet - we'll check it again during registration
+        // Just update it to mark as verified (we could add a verified field, but for now just extend expiry)
+        await this.prisma.emailVerificationToken.update({
+            where: { id: token.id },
+            data: {
+                expires: new Date(Date.now() + 60 * 60 * 1000), // Extend to 1 hour for registration
+            },
+        });
+
+        return {
+            verified: true,
+            message: 'Email verified successfully',
+        };
+    }
+
+    /**
+     * Check if email has been verified recently (for registration)
+     */
+    async isEmailVerified(email: string): Promise<boolean> {
+        const token = await this.prisma.emailVerificationToken.findFirst({
+            where: {
+                email,
+                expires: { gt: new Date() },
+            },
+        });
+        return !!token;
     }
 }
 

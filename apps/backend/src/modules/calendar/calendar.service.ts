@@ -510,7 +510,7 @@ Return a JSON object with the filter conditions.`;
             console.log('[AI Filter] Query:', query);
 
             const response = await genAI.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 config: {
                     responseMimeType: 'application/json',

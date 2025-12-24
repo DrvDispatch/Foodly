@@ -119,6 +119,7 @@ const mealAnalysisSchema = {
  */
 @Injectable()
 export class GeminiService {
+    // Gemini 3 Flash Preview - supports thinking mode for better reasoning
     private readonly MODEL_NAME = 'gemini-3-flash-preview';
 
     constructor(private configService: ConfigService) { }
@@ -198,7 +199,16 @@ export class GeminiService {
         timestamp?: string,
         additionalImages?: string[],
     ): Promise<MealAnalysisResult> {
+        console.log('[GeminiService] Starting meal analysis:', {
+            hasDescription: !!description,
+            hasImage: !!imageBase64,
+            imageLength: imageBase64?.length || 0,
+            additionalImagesCount: additionalImages?.length || 0,
+            timestamp,
+        });
+
         const ai = this.getAI();
+        console.log('[GeminiService] AI client initialized');
 
         // Get time context for meal type inference
         const mealTime = timestamp ? new Date(timestamp) : new Date();
@@ -320,7 +330,7 @@ NUTRITION ANALYSIS:
                     responseJsonSchema: mealAnalysisSchema,
                     // LOW temperature for consistent portion/macro estimation
                     temperature: 0.25,
-                    // HIGH thinking for better reasoning about portions
+                    // Thinking mode for better reasoning about portions
                     thinkingConfig: {
                         thinkingLevel: ThinkingLevel.HIGH,
                     },
@@ -337,7 +347,25 @@ NUTRITION ANALYSIS:
             // Strip markdown code fences if present
             text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
 
-            const parsed = JSON.parse(text) as MealAnalysisResult;
+            // Robust JSON parsing with fallback
+            let parsed: MealAnalysisResult;
+            try {
+                parsed = JSON.parse(text);
+            } catch {
+                // Try to extract JSON object from mixed response
+                const jsonMatch = text.match(/\{[\s\S]*"mealType"[\s\S]*\}/);
+                if (jsonMatch) {
+                    try {
+                        parsed = JSON.parse(jsonMatch[0]);
+                    } catch (innerError) {
+                        console.error('[GeminiService] Could not extract JSON from response:', innerError);
+                        throw new Error('Failed to parse meal analysis response');
+                    }
+                } else {
+                    console.error('[GeminiService] Response is not valid JSON');
+                    throw new Error('Invalid response format from Gemini');
+                }
+            }
             console.log(`[GeminiService] ✓ Parsed: ${parsed.mealType}, ${parsed.totalNutrition.calories} kcal, ${parsed.items.length} items`);
 
             return parsed;

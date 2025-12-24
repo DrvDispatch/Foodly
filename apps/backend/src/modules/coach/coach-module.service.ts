@@ -158,6 +158,7 @@ export class CoachModuleService {
                 goalType: profile.goalType || undefined,
                 targetCal: profile.targetCal || undefined,
                 proteinTarget: profile.proteinTarget || undefined,
+                dietaryPrefs: profile.dietaryPrefs ? JSON.parse(profile.dietaryPrefs) : undefined,
             } : null,
             recentMessages: recentMessages.reverse().map((m: typeof recentMessages[number]) => ({
                 role: m.role,

@@ -38,7 +38,7 @@ export interface TimelineMeal {
  */
 @Injectable()
 export class TimelineService {
-    private readonly MODEL_NAME = 'gemini-3-flash-preview';
+    private readonly MODEL_NAME = 'gemini-2.0-flash';
 
     constructor(
         private prisma: PrismaService,
@@ -76,7 +76,7 @@ export class TimelineService {
         // Type alias for meal with snapshots
         type MealWithSnapshots = typeof meals[number];
 
-        // Calculate running totals
+        // Calculate running totals (ascending order for cumulative calculation)
         let runningCalories = 0;
         let runningProtein = 0;
         let runningCarbs = 0;
@@ -122,52 +122,78 @@ export class TimelineService {
                     carbs: runningCarbs,
                     fat: runningFat,
                 },
-                isFirst: index === 0,
-                isLast: index === meals.length - 1,
+                isFirst: false, // Will be set after reversal
+                isLast: false,
             };
         });
+
+        // Reverse for display (newest first) and fix isFirst/isLast flags
+        const reversedMeals = timelineMeals.reverse().map((meal, index, arr) => ({
+            ...meal,
+            isFirst: index === 0,
+            isLast: index === arr.length - 1,
+        }));
 
         // Goals
         const calorieTarget = user.profile?.targetCal || 2000;
         const proteinTarget = user.profile?.proteinTarget || 150;
 
-        // Generate AI reflection
+        // Generate AI reflection with caching
         let aiReflection = '';
         if (timelineMeals.length > 0) {
+            // Build data hash from totals to detect changes
+            const dataHash = `${runningCalories}:${runningProtein}:${timelineMeals.length}`;
+
+            // Check cache first
             try {
-                const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-                if (apiKey) {
-                    // Calculate meal timing patterns
-                    const morningCals = timelineMeals
-                        .filter((m) => {
-                            const hour = parseInt(m.time.split(':')[0], 10);
-                            const isPM = m.time.includes('PM');
-                            const actualHour = isPM && hour !== 12 ? hour + 12 : hour;
-                            return actualHour < 12;
-                        })
-                        .reduce((sum, m) => sum + m.calories, 0);
+                const cached = await this.prisma.aICache.findUnique({
+                    where: {
+                        userId_cacheType_cacheKey: {
+                            userId,
+                            cacheType: 'timeline_reflection',
+                            cacheKey: date,
+                        },
+                    },
+                });
 
-                    const afternoonCals = timelineMeals
-                        .filter((m) => {
-                            const hour = parseInt(m.time.split(':')[0], 10);
-                            const isPM = m.time.includes('PM');
-                            const actualHour = isPM && hour !== 12 ? hour + 12 : hour;
-                            return actualHour >= 12 && actualHour < 17;
-                        })
-                        .reduce((sum, m) => sum + m.calories, 0);
+                // Use cache if valid (not expired and same data)
+                if (cached && cached.expiresAt > new Date() && cached.dataHash === dataHash) {
+                    aiReflection = cached.content;
+                } else {
+                    // Generate new reflection
+                    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+                    if (apiKey) {
+                        // Calculate meal timing patterns
+                        const morningCals = timelineMeals
+                            .filter((m) => {
+                                const hour = parseInt(m.time.split(':')[0], 10);
+                                const isPM = m.time.includes('PM');
+                                const actualHour = isPM && hour !== 12 ? hour + 12 : hour;
+                                return actualHour < 12;
+                            })
+                            .reduce((sum, m) => sum + m.calories, 0);
 
-                    const eveningCals = timelineMeals
-                        .filter((m) => {
-                            const hour = parseInt(m.time.split(':')[0], 10);
-                            const isPM = m.time.includes('PM');
-                            const actualHour = isPM && hour !== 12 ? hour + 12 : hour;
-                            return actualHour >= 17;
-                        })
-                        .reduce((sum, m) => sum + m.calories, 0);
+                        const afternoonCals = timelineMeals
+                            .filter((m) => {
+                                const hour = parseInt(m.time.split(':')[0], 10);
+                                const isPM = m.time.includes('PM');
+                                const actualHour = isPM && hour !== 12 ? hour + 12 : hour;
+                                return actualHour >= 12 && actualHour < 17;
+                            })
+                            .reduce((sum, m) => sum + m.calories, 0);
 
-                    const genAI = new GoogleGenAI({ apiKey });
+                        const eveningCals = timelineMeals
+                            .filter((m) => {
+                                const hour = parseInt(m.time.split(':')[0], 10);
+                                const isPM = m.time.includes('PM');
+                                const actualHour = isPM && hour !== 12 ? hour + 12 : hour;
+                                return actualHour >= 17;
+                            })
+                            .reduce((sum, m) => sum + m.calories, 0);
 
-                    const prompt = `Generate ONE short observation (max 80 chars) about this day's eating pattern. No advice.
+                        const genAI = new GoogleGenAI({ apiKey });
+
+                        const prompt = `Generate ONE short observation (max 80 chars) about this day's eating pattern. No advice.
 
 DATA:
 - Total meals: ${timelineMeals.length}
@@ -184,17 +210,44 @@ EXAMPLES:
 
 Return JSON with "reflection" field.`;
 
-                    const result = await genAI.models.generateContent({
-                        model: this.MODEL_NAME,
-                        contents: prompt,
-                        config: {
-                            responseMimeType: 'application/json',
-                            temperature: 0.3,
-                        },
-                    });
+                        const result = await genAI.models.generateContent({
+                            model: this.MODEL_NAME,
+                            contents: prompt,
+                            config: {
+                                responseMimeType: 'application/json',
+                                temperature: 0.3,
+                            },
+                        });
 
-                    const parsed = JSON.parse(result.text || '{}');
-                    aiReflection = parsed.reflection || '';
+                        const parsed = JSON.parse(result.text || '{}');
+                        aiReflection = parsed.reflection || '';
+
+                        // Cache the result for 1 hour
+                        if (aiReflection) {
+                            await this.prisma.aICache.upsert({
+                                where: {
+                                    userId_cacheType_cacheKey: {
+                                        userId,
+                                        cacheType: 'timeline_reflection',
+                                        cacheKey: date,
+                                    },
+                                },
+                                update: {
+                                    content: aiReflection,
+                                    dataHash,
+                                    expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour TTL
+                                },
+                                create: {
+                                    userId,
+                                    cacheType: 'timeline_reflection',
+                                    cacheKey: date,
+                                    content: aiReflection,
+                                    dataHash,
+                                    expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour TTL
+                                },
+                            });
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('[TimelineService] AI reflection error:', err);
@@ -203,7 +256,7 @@ Return JSON with "reflection" field.`;
 
         return {
             date,
-            meals: timelineMeals,
+            meals: reversedMeals,
             totals: {
                 calories: runningCalories,
                 protein: runningProtein,
@@ -215,7 +268,7 @@ Return JSON with "reflection" field.`;
                 protein: proteinTarget,
             },
             aiReflection,
-            mealCount: timelineMeals.length,
+            mealCount: reversedMeals.length,
         };
     }
 }

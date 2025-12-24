@@ -11,6 +11,7 @@ export interface TodaySummaryResponse {
         goalType: string;
         secondaryFocus: string;
         unitSystem: string;
+        targetWeight?: number;
     };
     goals: {
         calories: number;
@@ -32,6 +33,17 @@ export interface TodaySummaryResponse {
             carbs: number;
             fat: number;
             confidence: number;
+            // Micronutrients
+            fiber?: number;
+            vitaminD?: number;
+            vitaminC?: number;
+            vitaminB12?: number;
+            iron?: number;
+            calcium?: number;
+            magnesium?: number;
+            zinc?: number;
+            potassium?: number;
+            qualityScore?: number;
         } | null;
         items: Array<{
             id: string;
@@ -54,6 +66,10 @@ export interface TodaySummaryResponse {
         kg: number;
         date: string;
     } | null;
+    weightHistory: Array<{
+        kg: number;
+        date: string;
+    }>;
     habits: {
         streak: number;
         daysWithMeals: number;
@@ -63,6 +79,14 @@ export interface TodaySummaryResponse {
     date: string;
     isToday: boolean;
     cachedInsight: string | null;
+    goalAdjustment?: {
+        shouldAdjust: boolean;
+        currentWeight: number;
+        targetWeight: number;
+        difference: number;
+        suggestedAction: 'cut' | 'bulk' | 'maintain';
+        reason: string;
+    };
 }
 
 /**
@@ -97,6 +121,7 @@ export class TodayService {
             user,
             meals,
             weightEntry,
+            weightHistory,
             coachState,
             recentMeals7d,
         ] = await Promise.all([
@@ -106,7 +131,7 @@ export class TodayService {
                 include: { profile: true },
             }),
 
-            // 2. Today's meals with active snapshots
+            // 2. Today's meals with active snapshots (including micronutrients)
             this.prisma.meal.findMany({
                 where: {
                     userId,
@@ -131,12 +156,22 @@ export class TodayService {
                 orderBy: { date: 'desc' },
             }),
 
-            // 4. Coach unread state
+            // 4. Weight history (last 7 days for trend chart)
+            this.prisma.weightEntry.findMany({
+                where: {
+                    userId,
+                    date: { gte: subDays(new Date(), 7) },
+                },
+                orderBy: { date: 'asc' },
+                take: 7,
+            }),
+
+            // 5. Coach unread state
             this.prisma.coachState.findUnique({
                 where: { userId },
             }),
 
-            // 5. Recent meals for habits/streak (last 7 days)
+            // 6. Recent meals for habits/streak (last 7 days)
             this.prisma.meal.groupBy({
                 by: ['mealTime'],
                 where: {
@@ -184,6 +219,17 @@ export class TodayService {
                         carbs: snapshot.carbs,
                         fat: snapshot.fat,
                         confidence: snapshot.confidence,
+                        // Micronutrients
+                        fiber: snapshot.fiber ?? undefined,
+                        vitaminD: snapshot.vitaminD ?? undefined,
+                        vitaminC: snapshot.vitaminC ?? undefined,
+                        vitaminB12: snapshot.vitaminB12 ?? undefined,
+                        iron: snapshot.iron ?? undefined,
+                        calcium: snapshot.calcium ?? undefined,
+                        magnesium: snapshot.magnesium ?? undefined,
+                        zinc: snapshot.zinc ?? undefined,
+                        potassium: snapshot.potassium ?? undefined,
+                        qualityScore: snapshot.qualityScore ?? undefined,
                     }
                     : null,
                 items: meal.items.map((item: MealItem) => ({
@@ -231,6 +277,7 @@ export class TodayService {
                 goalType: profile?.goalType || 'maintenance',
                 secondaryFocus: profile?.secondaryFocus || '[]',
                 unitSystem: profile?.unitSystem || 'metric',
+                targetWeight: profile?.targetWeight ?? undefined,
             },
 
             // Goals
@@ -256,6 +303,12 @@ export class TodayService {
                 }
                 : null,
 
+            // Weight history for trend chart
+            weightHistory: weightHistory.map(w => ({
+                kg: w.weight,
+                date: w.date.toISOString(),
+            })),
+
             // Habits
             habits: {
                 streak,
@@ -272,6 +325,37 @@ export class TodayService {
 
             // AI insight placeholder - client fetches separately if needed
             cachedInsight: null,
+
+            // Goal adjustment recommendation (only if we have weight data)
+            goalAdjustment: (() => {
+                const currentWeight = weightEntry?.weight || profile?.currentWeight;
+                const targetWeight = profile?.targetWeight;
+                const goalType = profile?.goalType;
+
+                if (!currentWeight || !targetWeight || !goalType) return undefined;
+
+                const diff = currentWeight - targetWeight;
+                const threshold = Math.max(0.5, Math.abs(diff) * 0.1); // Dynamic: 10%, min 0.5kg
+
+                if (Math.abs(diff) < threshold) return undefined; // At goal
+
+                const isOver = diff > 0;
+                const shouldAdjust = (isOver && !['lose', 'fat_loss'].includes(goalType)) ||
+                    (!isOver && !['gain', 'muscle_gain'].includes(goalType));
+
+                if (!shouldAdjust) return undefined;
+
+                return {
+                    shouldAdjust: true,
+                    currentWeight,
+                    targetWeight,
+                    difference: diff,
+                    suggestedAction: isOver ? 'cut' : 'bulk' as const,
+                    reason: isOver
+                        ? `You're ${diff.toFixed(1)}kg over target. Consider a cutting phase.`
+                        : `You're ${Math.abs(diff).toFixed(1)}kg under target. Consider a bulking phase.`,
+                };
+            })(),
         };
     }
 }

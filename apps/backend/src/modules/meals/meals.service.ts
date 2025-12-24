@@ -363,6 +363,11 @@ export class MealsService {
             throw new ForbiddenException('Access denied');
         }
 
+        console.log('[MealsService] Starting reanalysis for meal:', mealId, {
+            hasPhotoKey: !!meal.photoKey,
+            hasDescription: !!meal.description,
+        });
+
         // Mark as analyzing
         await this.prisma.meal.update({
             where: { id: mealId },
@@ -380,10 +385,32 @@ export class MealsService {
             where: { mealId },
         });
 
-        // Note: We don't have the original photo base64 anymore
-        // We would need to download from MinIO and convert to base64
-        // For now, just use the description
-        this.analyzeInBackground(mealId, meal.description || undefined, undefined, undefined, meal.mealTime.toISOString())
+        // Fetch original image from MinIO if available
+        let photoBase64: string | undefined = undefined;
+        if (meal.photoKey) {
+            try {
+                const base64 = await this.storageService.getFileAsBase64(meal.photoKey);
+                if (base64) {
+                    photoBase64 = base64;
+                    console.log('[MealsService] Successfully fetched image from storage for reanalysis');
+                }
+            } catch (err) {
+                console.error('[MealsService] Failed to fetch image for reanalysis:', err);
+            }
+        }
+
+        if (!photoBase64 && !meal.description) {
+            console.error('[MealsService] Cannot reanalyze: no image and no description');
+            // Mark as not analyzing and return error
+            await this.prisma.meal.update({
+                where: { id: mealId },
+                data: { isAnalyzing: false, type: 'unknown' },
+            });
+            return { success: false, message: 'No image or description available for reanalysis' };
+        }
+
+        // Start background analysis with fetched image
+        this.analyzeInBackground(mealId, meal.description || undefined, photoBase64, undefined, meal.mealTime.toISOString())
             .catch((err) => console.error('[MealsService] Reanalysis failed:', err));
 
         return { success: true, message: 'Reanalysis started' };

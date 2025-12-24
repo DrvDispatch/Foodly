@@ -30,6 +30,7 @@ export class WeightService {
                 select: {
                     targetWeight: true,
                     currentWeight: true,
+                    startingWeight: true,
                     unitSystem: true,
                     goalType: true,
                     weeklyPace: true,
@@ -41,6 +42,7 @@ export class WeightService {
             entries,
             targetWeight: profile?.targetWeight,
             currentWeight: profile?.currentWeight,
+            startingWeight: profile?.startingWeight,
             unitSystem: profile?.unitSystem || 'metric',
             goalType: profile?.goalType,
             weeklyPace: profile?.weeklyPace,

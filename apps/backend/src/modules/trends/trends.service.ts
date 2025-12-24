@@ -439,7 +439,7 @@ User query: "${query}"
 Return a structured filter.`;
 
             const result = await genAI.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 contents: prompt,
                 config: {
                     responseMimeType: 'application/json',
@@ -546,7 +546,7 @@ Context:
 Return JSON with headline, guidance, and technical fields.`;
 
             const result = await genAI.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 contents: prompt,
                 config: {
                     responseMimeType: 'application/json',
@@ -695,7 +695,7 @@ ${isOnTrack ?
 Return JSON: { "message": "...", "type": "success|info|warning" }`;
 
             const result = await genAI.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 contents: prompt,
                 config: {
                     responseMimeType: 'application/json',
@@ -717,6 +717,174 @@ Return JSON: { "message": "...", "type": "success|info|warning" }`;
                 message: 'Weight fluctuations are completely normal',
                 type: 'info'
             };
+        }
+    }
+
+    /**
+     * Get macro breakdown by meal type
+     * Returns distribution of calories/protein/carbs/fat across breakfast, lunch, dinner, snack
+     */
+    async getMealBreakdown(userId: string, range: string = '30d') {
+        const rangeDays: Record<string, number> = {
+            '7d': 7,
+            '30d': 30,
+            '90d': 90,
+            '180d': 180,
+        };
+        const days = rangeDays[range] || 30;
+
+        // Get user with profile
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { profile: true },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const now = new Date();
+        const endDate = endOfDay(now);
+        const startDate = startOfDay(subDays(now, days - 1));
+
+        // Fetch meals with their types and nutrition
+        const meals = await this.prisma.meal.findMany({
+            where: {
+                userId,
+                mealTime: { gte: startDate, lte: endDate },
+            },
+            include: {
+                snapshots: {
+                    where: { isActive: true },
+                    take: 1,
+                },
+            },
+        });
+
+        // Initialize breakdown by meal type
+        const breakdown = {
+            calories: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 },
+            protein: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 },
+            carbs: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 },
+            fat: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 },
+        };
+
+        const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+        // Aggregate by meal type
+        meals.forEach(meal => {
+            const snapshot = meal.snapshots[0];
+            if (!snapshot) return;
+
+            const type = meal.type.toLowerCase() as 'breakfast' | 'lunch' | 'dinner' | 'snack';
+            const validType = ['breakfast', 'lunch', 'dinner', 'snack'].includes(type) ? type : 'snack';
+
+            breakdown.calories[validType] += snapshot.calories || 0;
+            breakdown.protein[validType] += snapshot.protein || 0;
+            breakdown.carbs[validType] += snapshot.carbs || 0;
+            breakdown.fat[validType] += snapshot.fat || 0;
+
+            totals.calories += snapshot.calories || 0;
+            totals.protein += snapshot.protein || 0;
+            totals.carbs += snapshot.carbs || 0;
+            totals.fat += snapshot.fat || 0;
+        });
+
+        // Goals from profile
+        const goals = {
+            calories: user.profile?.targetCal || 2000,
+            protein: user.profile?.proteinTarget || 150,
+            carbs: user.profile?.carbTarget || 200,
+            fat: user.profile?.fatTarget || 70,
+        };
+
+        // Calculate consistency scores per metric
+        const getTrends = await this.getTrends(userId, range);
+        const consistencyScores = {
+            calories: getTrends.stats.calories.consistencyScore,
+            protein: getTrends.stats.protein.consistencyScore,
+            carbs: getTrends.stats.carbs.consistencyScore,
+            fat: getTrends.stats.fat.consistencyScore,
+        };
+
+        return {
+            range,
+            breakdown,
+            totals,
+            goals,
+            consistencyScores,
+            mealCount: meals.length,
+        };
+    }
+
+    /**
+     * AI explanation for meal source breakdown
+     */
+    async explainSourceBreakdown(
+        userId: string,
+        dto: {
+            metric: string;
+            breakdown: { breakfast: number; lunch: number; dinner: number; snack: number };
+            total: number;
+            goal: number;
+            consistencyScore: number;
+        }
+    ) {
+        const { GoogleGenAI } = await import('@google/genai');
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+            return { explanation: 'AI service not configured' };
+        }
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { profile: true },
+        });
+
+        const goalType = user?.profile?.goalType || 'maintenance';
+        const { metric, breakdown, total, goal, consistencyScore } = dto;
+
+        // Calculate percentages
+        const pcts = {
+            breakfast: total > 0 ? Math.round((breakdown.breakfast / total) * 100) : 0,
+            lunch: total > 0 ? Math.round((breakdown.lunch / total) * 100) : 0,
+            dinner: total > 0 ? Math.round((breakdown.dinner / total) * 100) : 0,
+            snack: total > 0 ? Math.round((breakdown.snack / total) * 100) : 0,
+        };
+
+        const dominant = Object.entries(pcts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+
+        const genAI = new GoogleGenAI({ apiKey });
+
+        const prompt = `You are a supportive nutrition coach. Generate a 2-sentence insight about this ${metric} distribution.
+
+Context:
+- User goal: ${goalType}
+- Metric: ${metric}
+- Total: ${total} (target: ${goal})
+- Breakdown: Breakfast ${pcts.breakfast}%, Lunch ${pcts.lunch}%, Dinner ${pcts.dinner}%, Snack ${pcts.snack}%
+- Dominant meal: ${dominant}
+- Consistency score: ${consistencyScore}%
+
+Rules:
+- Be encouraging and specific
+- Mention the dominant meal pattern
+- Give one actionable suggestion if helpful
+- Max 2 sentences
+
+Return just the explanation text, no JSON.`;
+
+        try {
+            const result = await genAI.models.generateContent({
+                model: 'gemini-2.0-flash',
+                contents: prompt,
+            });
+
+            return { explanation: result.text?.trim() || `Most of your ${metric} comes from ${dominant}.` };
+        } catch (error) {
+            console.error('Explain Source Error:', error);
+            return { explanation: `Most of your ${metric} (${pcts[dominant as keyof typeof pcts]}%) comes from ${dominant}.` };
         }
     }
 }

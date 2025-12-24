@@ -48,7 +48,7 @@ const insightResponseSchema = {
  */
 @Injectable()
 export class InsightService {
-    private readonly MODEL_NAME = 'gemini-3-flash-preview';
+    private readonly MODEL_NAME = 'gemini-2.0-flash';
     private readonly insightCache = new Map<string, { text: string; timestamp: number }>();
     private readonly CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -329,7 +329,29 @@ Respond with JSON: { "insight": "your 8-10 word hint" }
             const text = response.text?.trim();
             if (!text) return null;
 
-            const parsed = JSON.parse(text) as InsightResponse;
+            // Robust JSON parsing with fallback
+            let parsed: InsightResponse;
+            try {
+                parsed = JSON.parse(text);
+            } catch {
+                // Try to extract JSON from mixed response
+                const jsonMatch = text.match(/\{[\s\S]*"insight"[\s\S]*\}/);
+                if (jsonMatch) {
+                    try {
+                        parsed = JSON.parse(jsonMatch[0]);
+                    } catch {
+                        console.warn('[InsightService] Could not extract JSON from response');
+                        return null;
+                    }
+                } else {
+                    // Use raw text as insight if it looks reasonable
+                    if (text.length > 5 && text.length < 200) {
+                        return { insight: text.replace(/["\n]/g, ' ').trim() };
+                    }
+                    console.warn('[InsightService] Non-JSON response received');
+                    return null;
+                }
+            }
 
             // Remove em dashes if present
             if (parsed.insight) {
@@ -342,6 +364,7 @@ Respond with JSON: { "insight": "your 8-10 word hint" }
             return null;
         }
     }
+
 
     // ============================================================================
     // PUBLIC API

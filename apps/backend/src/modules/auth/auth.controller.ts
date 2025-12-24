@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto, ExchangeSessionDto } from './dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto, ExchangeSessionDto, SendVerificationDto, VerifyCodeDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -84,5 +84,25 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async googleLogin(@Body() dto: { token: string }) {
         return this.authService.googleLogin(dto.token);
+    }
+
+    /**
+     * POST /api/auth/send-verification
+     * Send 6-digit verification code to email (during signup)
+     */
+    @Post('send-verification')
+    @HttpCode(HttpStatus.OK)
+    async sendVerification(@Body() dto: SendVerificationDto) {
+        return this.authService.sendVerificationCode(dto.email);
+    }
+
+    /**
+     * POST /api/auth/verify-code
+     * Verify the 6-digit code
+     */
+    @Post('verify-code')
+    @HttpCode(HttpStatus.OK)
+    async verifyCode(@Body() dto: VerifyCodeDto) {
+        return this.authService.verifyCode(dto.email, dto.code);
     }
 }

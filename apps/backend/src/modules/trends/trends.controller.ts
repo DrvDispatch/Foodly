@@ -81,4 +81,35 @@ export class TrendsController {
     ) {
         return this.trendsService.getWeightNormalcyMessage(dto);
     }
+
+    /**
+     * GET /api/trends/meal-breakdown
+     * Get macro distribution by meal type (breakfast, lunch, dinner, snack)
+     */
+    @Get('meal-breakdown')
+    async getMealBreakdown(
+        @CurrentUser() user: UserPayload,
+        @Query('range') range?: string,
+    ) {
+        return this.trendsService.getMealBreakdown(user.id, range);
+    }
+
+    /**
+     * POST /api/trends/explain-source
+     * AI explanation for meal source breakdown
+     */
+    @Post('explain-source')
+    async explainSourceBreakdown(
+        @CurrentUser() user: UserPayload,
+        @Body() dto: {
+            metric: string;
+            breakdown: { breakfast: number; lunch: number; dinner: number; snack: number };
+            total: number;
+            goal: number;
+            consistencyScore: number;
+        },
+    ) {
+        return this.trendsService.explainSourceBreakdown(user.id, dto);
+    }
 }
+

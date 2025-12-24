@@ -56,3 +56,23 @@ export class ExchangeSessionDto {
     @IsOptional()
     sessionUserId?: string;
 }
+
+/**
+ * DTO for sending verification code
+ */
+export class SendVerificationDto {
+    @IsEmail()
+    email: string;
+}
+
+/**
+ * DTO for verifying email code
+ */
+export class VerifyCodeDto {
+    @IsEmail()
+    email: string;
+
+    @IsString()
+    @MinLength(6, { message: 'Code must be 6 digits' })
+    code: string;
+}

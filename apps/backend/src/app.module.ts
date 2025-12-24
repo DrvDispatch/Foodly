@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BootstrapModule } from './modules/bootstrap/bootstrap.module';
 import { AccountModule } from './modules/account/account.module';
 import { AiModule } from './modules/ai/ai.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { EmailModule } from './modules/email/email.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { TodayModule } from './modules/today/today.module';
 import { MealsModule } from './modules/meals/meals.module';
@@ -20,14 +23,21 @@ import { ProgressModule } from './modules/progress/progress.module';
 import { HealthModule } from './modules/health/health.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
 import { ExportModule } from './modules/export/export.module';
+import { GoalsModule } from './modules/goals/goals.module';
 
 @Module({
     imports: [
         // Global config module
         ConfigModule.forRoot({
             isGlobal: true,
-            envFilePath: ['.env.local', '.env'],
+            envFilePath: ['../../.env.local', '../../.env', '.env.local', '.env'],
         }),
+
+        // Rate limiting - protect against abuse
+        ThrottlerModule.forRoot([
+            { name: 'short', ttl: 1000, limit: 10 },   // 10 requests per second
+            { name: 'medium', ttl: 60000, limit: 100 }, // 100 requests per minute
+        ]),
 
         // Database
         PrismaModule,
@@ -35,6 +45,7 @@ import { ExportModule } from './modules/export/export.module';
         // Core services
         AiModule,
         StorageModule,
+        EmailModule,
 
         // Feature modules
         AuthModule,
@@ -54,6 +65,11 @@ import { ExportModule } from './modules/export/export.module';
         HealthModule,
         TimelineModule,
         ExportModule,
+        GoalsModule,
+    ],
+    providers: [
+        // Apply rate limiting globally to all routes
+        { provide: APP_GUARD, useClass: ThrottlerGuard },
     ],
 })
 export class AppModule { }

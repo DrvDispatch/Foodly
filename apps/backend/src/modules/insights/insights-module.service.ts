@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InsightService } from '../ai/insight.service';
-import { GenerateInsightDto } from './dto';
+import { GenerateInsightDto, BatchGenerateInsightDto } from './dto';
 
 /**
  * Insights Module Service
@@ -41,5 +41,49 @@ export class InsightsModuleService {
         }
 
         return { insight };
+    }
+
+    /**
+     * Generate insights for multiple meals in a single request
+     * Processes in parallel for speed, with built-in caching
+     */
+    async generateBatchInsights(userId: string, dto: BatchGenerateInsightDto) {
+        const { signals, userContext, level = 'brief' } = dto;
+
+        // Process all signals in parallel (InsightService has caching)
+        const results = await Promise.all(
+            signals.map(async ({ id, signal }) => {
+                try {
+                    let insight: string | null;
+
+                    if (level === 'detailed') {
+                        insight = await this.insightService.generateDetailedInsightCached(
+                            signal,
+                            userContext,
+                            userId,
+                        );
+                    } else {
+                        insight = await this.insightService.generateInsightCached(
+                            signal,
+                            userContext,
+                            userId,
+                        );
+                    }
+
+                    return { id, insight };
+                } catch (error) {
+                    console.error(`[InsightsService] Batch insight error for ${id}:`, error);
+                    return { id, insight: null };
+                }
+            })
+        );
+
+        // Convert to map for easy frontend consumption
+        const insights: Record<string, string | null> = {};
+        results.forEach(({ id, insight }) => {
+            insights[id] = insight;
+        });
+
+        return { insights };
     }
 }

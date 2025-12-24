@@ -1,6 +1,10 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
+
+// File upload security constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 /**
  * Storage Service - MinIO S3-compatible object storage
@@ -88,7 +92,18 @@ export class StorageService implements OnModuleInit {
         const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
         const buffer = Buffer.from(cleanBase64, 'base64');
 
-        return this.uploadBuffer(buffer, filename, folder, this.detectMimeType(base64Data));
+        // Security: Validate file size
+        if (buffer.length > MAX_FILE_SIZE) {
+            throw new BadRequestException(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+        }
+
+        // Security: Validate MIME type
+        const mimeType = this.detectMimeType(base64Data);
+        if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+            throw new BadRequestException(`Invalid file type. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`);
+        }
+
+        return this.uploadBuffer(buffer, filename, folder, mimeType);
     }
 
     /**
@@ -176,6 +191,55 @@ export class StorageService implements OnModuleInit {
         } catch {
             return false;
         }
+    }
+
+    /**
+     * Get file as base64 string (for reanalysis with Gemini)
+     */
+    async getFileAsBase64(key: string): Promise<string | null> {
+        try {
+            const stream = await this.client.getObject(this.bucketName, key);
+            const chunks: Buffer[] = [];
+
+            for await (const chunk of stream) {
+                chunks.push(chunk as Buffer);
+            }
+
+            const buffer = Buffer.concat(chunks);
+            const base64 = buffer.toString('base64');
+
+            // Detect mime type and add data URI prefix
+            const mimeType = this.detectMimeTypeFromBuffer(buffer);
+            console.log(`[StorageService] Fetched ${key} as base64 (${buffer.length} bytes, ${mimeType})`);
+
+            return `data:${mimeType};base64,${base64}`;
+        } catch (error) {
+            console.error(`[StorageService] Failed to get file as base64 ${key}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Detect MIME type from buffer magic bytes
+     */
+    private detectMimeTypeFromBuffer(buffer: Buffer): string {
+        // PNG: 89 50 4E 47
+        if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+            return 'image/png';
+        }
+        // JPEG: FF D8 FF
+        if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+            return 'image/jpeg';
+        }
+        // WebP: RIFF....WEBP
+        if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
+            return 'image/webp';
+        }
+        // GIF: 47 49 46 38
+        if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+            return 'image/gif';
+        }
+        return 'image/jpeg';
     }
 
     /**

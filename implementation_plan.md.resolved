@@ -1,0 +1,90 @@
+# Smart Goal Adjustment System
+
+## Dynamic Threshold Logic
+Instead of fixed 2kg, use **percentage of remaining distance to goal**:
+```
+threshold = max(0.5kg, (currentWeight - targetWeight) * 0.1)
+```
+- If target is 80kg and you're at 85kg: threshold = 0.5kg (5kg × 10%)
+- If target is 60kg and you're at 90kg: threshold = 3kg (30kg × 10%)
+
+---
+
+## Part 1: AI "Explain This Trend" Button
+
+### Location
+Replace yellow disclaimer in Weight tab with button: **"Explain This Trend"**
+
+### Output (AI-generated)
+> "You started at 72kg with a recomp goal. Over 3 months, you've gained 12kg - likely a mix of muscle and fat. At 84kg, you're 4kg above your 80kg target. Based on your progress, I recommend a 6-8 week cut at 2,500 kcal/day to reach target, then resume maintenance."
+
+---
+
+## Part 2: Goal Adjustment Wizard Flow
+
+### Trigger
+Homepage banner when over threshold:
+> "You're 4kg over target. **Review your plan →**"
+
+### Flow: `/adjust-goals` Page
+
+**Step 1: Journey Summary**
+```
+┌─────────────────────────────────────┐
+│  📊 Your Journey So Far             │
+│                                     │
+│  Started: 72kg (Dec 1)              │
+│  Current: 84kg (+12kg)              │
+│  Target:  80kg                      │
+│  Goal:    Recomp                    │
+│                                     │
+│  You've exceeded your target by 4kg.│
+│  This is common during recomp!      │
+└─────────────────────────────────────┘
+```
+
+**Step 2: AI Recommendation**
+```
+┌─────────────────────────────────────┐
+│  💡 My Recommendation               │
+│                                     │
+│  Switch to a **mild cut** for 6-8  │
+│  weeks to shed excess fat while    │
+│  preserving muscle gains.          │
+│                                     │
+│  New daily targets:                │
+│  • Calories: 2,500 (was 2,800)     │
+│  • Protein: 160g (same)            │
+│  • Carbs: 250g (was 300g)          │
+│  • Fat: 70g (was 85g)              │
+│                                     │
+│  [Accept]  [Customize]  [Keep Current] │
+└─────────────────────────────────────┘
+```
+
+**Step 3: Confirmation**
+Apply changes to profile, show success message.
+
+---
+
+## Proposed Changes
+
+### Backend
+#### [NEW] [adjust-goals.service.ts](file:///c:/Nutri/apps/backend/src/modules/goals)
+- Calculate recommended goal shift
+- Generate AI explanation
+- Recalculate macros based on new goal
+
+#### [MODIFY] [today.service.ts](file:///c:/Nutri/apps/backend/src/modules/today/today.service.ts)
+- Add `goalAdjustment` field to response with threshold check
+
+### Frontend
+#### [NEW] [adjust-goals/page.tsx](file:///c:/Nutri/apps/frontend/src/app/adjust-goals/page.tsx)
+- 3-step wizard flow
+- Journey summary, AI recommendation, confirmation
+
+#### [MODIFY] [page.tsx](file:///c:/Nutri/apps/frontend/src/app/page.tsx)
+- Add goal adjustment banner when triggered
+
+#### [MODIFY] [WeightChart.tsx](file:///c:/Nutri/apps/frontend/src/components/trends/WeightChart.tsx)
+- Replace disclaimer with "Explain This Trend" button

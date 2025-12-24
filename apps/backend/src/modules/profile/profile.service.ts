@@ -75,15 +75,54 @@ export class ProfileService {
             Object.entries(data).filter(([, v]) => v !== undefined)
         );
 
+        // Check if this is initial profile creation (for startingWeight)
+        const existingProfile = await this.prisma.profile.findUnique({
+            where: { userId },
+            select: { startingWeight: true },
+        });
+
+        // Set startingWeight only if not already set and currentWeight is provided
+        const createData = {
+            userId,
+            ...cleanData,
+            // Set startingWeight on initial creation if currentWeight is provided
+            ...(dto.currentWeight && { startingWeight: dto.currentWeight }),
+        };
+
+        const updateData = {
+            ...cleanData,
+            // Only set startingWeight if it's not already set
+            ...(dto.currentWeight && !existingProfile?.startingWeight && { startingWeight: dto.currentWeight }),
+        };
+
         // Upsert profile
         const profile = await this.prisma.profile.upsert({
             where: { userId },
-            update: cleanData,
-            create: {
-                userId,
-                ...cleanData,
-            },
+            update: updateData,
+            create: createData,
         });
+
+        // Auto-create initial weight entry from onboarding if:
+        // 1. currentWeight is provided
+        // 2. This is the first time (startingWeight was not set before)
+        // 3. User has no weight entries yet
+        if (dto.currentWeight && !existingProfile?.startingWeight) {
+            const existingWeightEntries = await this.prisma.weightEntry.count({
+                where: { userId },
+            });
+
+            if (existingWeightEntries === 0) {
+                await this.prisma.weightEntry.create({
+                    data: {
+                        userId,
+                        weight: dto.currentWeight,
+                        date: new Date(),
+                        note: 'Starting weight from onboarding',
+                    },
+                });
+                console.log('[ProfileService] Created initial weight entry from onboarding:', dto.currentWeight);
+            }
+        }
 
         // If nutrition targets are provided, create/update Goal
         if (dto.targetCal) {
@@ -231,7 +270,7 @@ DO NOT say "you should eat" or give any advice.`;
 
         try {
             const result = await genAI.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 contents: prompt,
             });
 

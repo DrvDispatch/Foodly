@@ -85,7 +85,7 @@ const validationSchema = {
  */
 @Injectable()
 export class HealthService {
-    private readonly MODEL_NAME = 'gemini-3-flash-preview';
+    private readonly MODEL_NAME = 'gemini-2.0-flash';
 
     constructor(
         private prisma: PrismaService,
