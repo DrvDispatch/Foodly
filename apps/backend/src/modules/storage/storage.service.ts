@@ -133,9 +133,16 @@ export class StorageService implements OnModuleInit {
 
     /**
      * Get public URL for an object
-     * Uses direct MinIO URL for public buckets
+     * Uses STORAGE_PUBLIC_URL if configured, otherwise falls back to direct MinIO URL
      */
     getPublicUrl(key: string): string {
+        const publicUrl = this.configService.get<string>('STORAGE_PUBLIC_URL');
+        if (publicUrl) {
+            // Ensure no trailing slash
+            const baseUrl = publicUrl.replace(/\/$/, '');
+            return `${baseUrl}/${key}`;
+        }
+
         const protocol = this.useSSL ? 'https' : 'http';
         return `${protocol}://${this.endpoint}:${this.port}/${this.bucketName}/${key}`;
     }
