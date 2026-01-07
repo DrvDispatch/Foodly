@@ -20,6 +20,16 @@ export const metadata: Metadata = {
         statusBarStyle: 'default',
         title: 'Foodly',
     },
+    icons: {
+        icon: [
+            { url: '/favicon.png', media: '(prefers-color-scheme: light)' },
+            { url: '/favicon-dark.png', media: '(prefers-color-scheme: dark)' },
+        ],
+        apple: [
+            { url: '/icon-192.png', media: '(prefers-color-scheme: light)' },
+            { url: '/icon-192-dark.png', media: '(prefers-color-scheme: dark)' },
+        ],
+    },
 }
 
 export const viewport: Viewport = {
@@ -56,16 +66,8 @@ export default function RootLayout({
 
     return (
         <html lang="en" className={inter.variable} suppressHydrationWarning>
-            <head>
-                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-                {/* Favicon - switches based on color scheme */}
-                <link rel="icon" type="image/png" href="/favicon.png" media="(prefers-color-scheme: light)" />
-                <link rel="icon" type="image/png" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
-                {/* Apple touch icons */}
-                <link rel="apple-touch-icon" href="/icon-192.png" media="(prefers-color-scheme: light)" />
-                <link rel="apple-touch-icon" href="/icon-192-dark.png" media="(prefers-color-scheme: dark)" />
-            </head>
             <body className="min-h-screen bg-surface-50 dark:bg-surface-50 text-surface-900 antialiased">
+                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
                 <Providers>
                     {children}
                 </Providers>
