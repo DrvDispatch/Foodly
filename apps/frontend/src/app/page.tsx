@@ -173,6 +173,7 @@ function MealRow({
 }) {
     const [swipeX, setSwipeX] = useState(0)
     const [startX, setStartX] = useState(0)
+    const [startY, setStartY] = useState(0)
     const [isSwiping, setIsSwiping] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
     const ACTION_THRESHOLD = 80 // pixels to reveal actions
@@ -196,16 +197,32 @@ function MealRow({
 
     const handleTouchStart = (e: React.TouchEvent) => {
         setStartX(e.touches[0].clientX)
-        setIsSwiping(true)
+        setStartY(e.touches[0].clientY)
+        // Don't set isSwiping yet - wait for move to determine direction
     }
 
     const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isSwiping) return
         const currentX = e.touches[0].clientX
-        const diff = currentX - startX
-        // Only allow swiping left (negative values), limit to -160px
-        const newSwipeX = Math.max(-160, Math.min(0, diff + (swipeX < 0 ? swipeX : 0)))
-        setSwipeX(diff < 0 ? newSwipeX : Math.min(0, diff))
+        const currentY = e.touches[0].clientY
+        const diffX = currentX - startX
+        const diffY = currentY - startY
+
+        // If not already swiping, check direction
+        if (!isSwiping) {
+            // If horizontal move is significantly larger than vertical, start swiping
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 5) {
+                setIsSwiping(true)
+            } else {
+                return // Let browser handle vertical scroll
+            }
+        }
+
+        // If we are swiping, handle the movement
+        if (isSwiping) {
+            // Only allow swiping left (negative values), limit to -160px
+            const newSwipeX = Math.max(-160, Math.min(0, diffX + (swipeX < 0 ? swipeX : 0)))
+            setSwipeX(diffX < 0 ? newSwipeX : Math.min(0, diffX))
+        }
     }
 
     const handleTouchEnd = () => {
