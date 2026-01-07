@@ -105,6 +105,17 @@ export default function SettingsPage() {
                             <LogOut className="w-5 h-5" />
                             <span className="font-medium">Log Out</span>
                         </button>
+
+                        {/* Legal Links */}
+                        <div className="flex items-center justify-center gap-4 text-sm text-surface-400 mt-6">
+                            <a href="/privacy" className="hover:text-surface-600 transition-colors">
+                                Privacy Policy
+                            </a>
+                            <span>•</span>
+                            <a href="/terms" className="hover:text-surface-600 transition-colors">
+                                Terms of Service
+                            </a>
+                        </div>
                     </>
                 )}
             </main>

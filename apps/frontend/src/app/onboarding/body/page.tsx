@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, ArrowRight, ArrowLeft } from 'lucide-react'
+import { User, ArrowRight, ArrowLeft, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const sexOptions = [
@@ -13,16 +13,29 @@ const sexOptions = [
 export default function BodyBasicsPage() {
     const router = useRouter()
     const [sex, setSex] = useState<string>('')
-    const [age, setAge] = useState<string>('')
+    const [birthDate, setBirthDate] = useState<string>('')
     const [heightFeet, setHeightFeet] = useState<string>('')
     const [heightInches, setHeightInches] = useState<string>('')
     const [heightCm, setHeightCm] = useState<string>('')
     const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>('metric')
 
-    const isValid = sex && age && (unitSystem === 'metric' ? heightCm : (heightFeet && heightInches))
+    // Calculate age from date of birth
+    const age = useMemo(() => {
+        if (!birthDate) return null
+        const birth = new Date(birthDate)
+        const today = new Date()
+        let calculatedAge = today.getFullYear() - birth.getFullYear()
+        const monthDiff = today.getMonth() - birth.getMonth()
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            calculatedAge--
+        }
+        return calculatedAge
+    }, [birthDate])
+
+    const isValid = sex && birthDate && age && age >= 16 && age <= 100 && (unitSystem === 'metric' ? heightCm : (heightFeet && heightInches))
 
     const handleContinue = () => {
-        if (!isValid) return
+        if (!isValid || !age) return
 
         // Calculate height in cm
         let finalHeightCm: number
@@ -32,9 +45,10 @@ export default function BodyBasicsPage() {
             finalHeightCm = parseFloat(heightCm)
         }
 
-        // Store in sessionStorage
+        // Store in sessionStorage (both birthDate and calculated age)
         sessionStorage.setItem('onboarding_sex', sex)
-        sessionStorage.setItem('onboarding_age', age)
+        sessionStorage.setItem('onboarding_birthdate', birthDate)
+        sessionStorage.setItem('onboarding_age', age.toString())
         sessionStorage.setItem('onboarding_height', finalHeightCm.toString())
         sessionStorage.setItem('onboarding_units', unitSystem)
 
@@ -90,21 +104,27 @@ export default function BodyBasicsPage() {
                     <p className="text-xs text-surface-400">Used for BMR calculation accuracy</p>
                 </div>
 
-                {/* Age */}
+                {/* Date of Birth */}
                 <div className="space-y-2">
-                    <label htmlFor="age" className="text-sm font-medium text-surface-700">
-                        Age
+                    <label htmlFor="birthDate" className="text-sm font-medium text-surface-700">
+                        Date of Birth
                     </label>
-                    <input
-                        id="age"
-                        type="number"
-                        min="16"
-                        max="100"
-                        value={age}
-                        onChange={(e) => setAge(e.target.value)}
-                        className="input text-center text-lg"
-                        placeholder="30"
-                    />
+                    <div className="relative">
+                        <input
+                            id="birthDate"
+                            type="date"
+                            value={birthDate}
+                            onChange={(e) => setBirthDate(e.target.value)}
+                            max={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split('T')[0]}
+                            min={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0]}
+                            className="input text-center text-lg w-full"
+                        />
+                    </div>
+                    {age !== null && (
+                        <p className="text-sm text-primary-600 font-medium">
+                            Age: {age} years old
+                        </p>
+                    )}
                 </div>
 
                 {/* Unit System Toggle */}

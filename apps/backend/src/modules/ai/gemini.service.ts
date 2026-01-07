@@ -132,6 +132,9 @@ export class GeminiService {
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY is not configured');
         }
+        // Log masked API key for debugging
+        const masked = apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4);
+        console.log('[GeminiService] Using API key:', masked);
         return new GoogleGenAI({ apiKey });
     }
 

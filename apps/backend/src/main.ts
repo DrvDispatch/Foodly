@@ -21,19 +21,9 @@ async function bootstrap() {
     // Global prefix for all routes
     app.setGlobalPrefix('api');
 
-    // Enable CORS for frontend - production uses strict single origin
-    const isProduction = process.env.NODE_ENV === 'production';
-    const allowedOrigins = isProduction
-        ? [process.env.FRONTEND_URL].filter(Boolean) as string[]
-        : [
-            process.env.FRONTEND_URL || 'http://localhost:3000',
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:3002',
-        ];
-
+    // Enable CORS for frontend - TEMPORARILY allowing all for phone debugging
     app.enableCors({
-        origin: allowedOrigins,
+        origin: true, // Allow ALL origins temporarily for debugging
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
@@ -52,9 +42,10 @@ async function bootstrap() {
     );
 
     const port = process.env.PORT || 4000;
-    await app.listen(port);
+    // Listen on 0.0.0.0 to accept connections from local network (phone testing)
+    await app.listen(port, '0.0.0.0');
 
-    console.log(`🚀 Backend running on http://localhost:${port}/api`);
+    console.log(`🚀 Backend running on http://0.0.0.0:${port}/api`);
 }
 
 bootstrap();

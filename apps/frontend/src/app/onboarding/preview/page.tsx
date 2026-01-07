@@ -62,6 +62,7 @@ export default function PreviewPage() {
             // Get stored values
             const goal = sessionStorage.getItem('onboarding_goal')
             const sex = sessionStorage.getItem('onboarding_sex')
+            const birthDate = sessionStorage.getItem('onboarding_birthdate')
             const age = sessionStorage.getItem('onboarding_age')
             const height = sessionStorage.getItem('onboarding_height')
             const weight = sessionStorage.getItem('onboarding_weight')
@@ -73,6 +74,7 @@ export default function PreviewPage() {
             // Save to database via NestJS backend
             await apiClient.post('/profile', {
                 sex,
+                birthDate: birthDate ? new Date(birthDate).toISOString() : undefined,
                 age: parseInt(age || '30'),
                 heightCm: parseFloat(height || '170'),
                 currentWeight: parseFloat(weight || '70'),
@@ -92,6 +94,7 @@ export default function PreviewPage() {
             // Clear session storage
             sessionStorage.removeItem('onboarding_goal')
             sessionStorage.removeItem('onboarding_sex')
+            sessionStorage.removeItem('onboarding_birthdate')
             sessionStorage.removeItem('onboarding_age')
             sessionStorage.removeItem('onboarding_height')
             sessionStorage.removeItem('onboarding_weight')

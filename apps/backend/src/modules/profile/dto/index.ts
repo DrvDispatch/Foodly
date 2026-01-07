@@ -7,6 +7,7 @@ import {
     Min,
     Max,
     IsArray,
+    IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -25,6 +26,10 @@ export class UpdateProfileDto {
     @Max(120)
     @Type(() => Number)
     age?: number;
+
+    @IsOptional()
+    @IsDateString()
+    birthDate?: string;
 
     @IsOptional()
     @IsNumber()

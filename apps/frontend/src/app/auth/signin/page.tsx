@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, Chrome, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Chrome, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiClient, setTokens } from '@/lib/api-client'
 import NextImage from 'next/image'
@@ -17,7 +17,6 @@ function SignInContent() {
 
     const [isLoading, setIsLoading] = useState(false)
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-    const [isDemoLoading, setIsDemoLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [formError, setFormError] = useState<string | null>(error || null)
 
@@ -54,44 +53,6 @@ function SignInContent() {
     const handleGoogleSignIn = async () => {
         setIsGoogleLoading(true)
         await signIn('google', { callbackUrl })
-    }
-
-    const handleDemoMode = async () => {
-        setIsDemoLoading(true)
-        setFormError(null)
-
-        try {
-            const data = await apiClient.post<{ 
-                user: { email: string }
-                accessToken: string
-                refreshToken: string 
-            }>('/auth/demo')
-
-            // Store the JWT tokens from the backend
-            if (data.accessToken && data.refreshToken) {
-                setTokens(data.accessToken, data.refreshToken)
-            }
-
-            // Sign in with demo credentials for NextAuth session
-            const result = await signIn('credentials', {
-                redirect: false,
-                email: data.user.email,
-                password: 'demo-password', // Demo users bypass password check
-            })
-
-            if (result?.error) {
-                // For demo, just redirect anyway since the user is created
-                router.push('/')
-                router.refresh()
-            } else {
-                router.push('/')
-                router.refresh()
-            }
-        } catch (err) {
-            setFormError('Failed to start demo mode')
-        } finally {
-            setIsDemoLoading(false)
-        }
     }
 
     return (
@@ -206,7 +167,7 @@ function SignInContent() {
                         </div>
                     </div>
 
-                    {/* Social & Demo Buttons */}
+                    {/* Social Buttons */}
                     <div className="space-y-3">
                         <button
                             onClick={handleGoogleSignIn}
@@ -225,24 +186,6 @@ function SignInContent() {
                                 </>
                             )}
                         </button>
-
-                        <button
-                            onClick={handleDemoMode}
-                            disabled={isDemoLoading}
-                            className={cn(
-                                "btn btn-ghost w-full border border-dashed border-primary-300 text-primary-600 hover:bg-primary-50",
-                                isDemoLoading && "opacity-70 cursor-not-allowed"
-                            )}
-                        >
-                            {isDemoLoading ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    <Sparkles className="w-5 h-5 mr-2" />
-                                    Try Demo Mode
-                                </>
-                            )}
-                        </button>
                     </div>
                 </div>
 
@@ -253,6 +196,17 @@ function SignInContent() {
                         Create one
                     </Link>
                 </p>
+
+                {/* Legal Links */}
+                <div className="flex items-center justify-center gap-4 text-sm text-surface-400">
+                    <Link href="/privacy" className="hover:text-surface-600 transition-colors">
+                        Privacy Policy
+                    </Link>
+                    <span>•</span>
+                    <Link href="/terms" className="hover:text-surface-600 transition-colors">
+                        Terms of Service
+                    </Link>
+                </div>
             </div>
         </div>
     )

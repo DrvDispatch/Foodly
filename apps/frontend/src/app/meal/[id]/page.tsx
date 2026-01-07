@@ -269,7 +269,7 @@ export default function MealDetailPage() {
         return (
             <div className="min-h-screen p-6 bg-surface-50">
                 <button
-                    onClick={() => router.back()}
+                    onClick={() => router.push('/')}
                     className="flex items-center gap-2 text-surface-600 mb-6"
                 >
                     <ArrowLeft className="w-5 h-5" />
@@ -297,7 +297,7 @@ export default function MealDetailPage() {
             <header className="sticky top-0 bg-white/95 backdrop-blur-lg border-b border-surface-100 z-10">
                 <div className="px-4 py-3 flex items-center justify-between">
                     <button
-                        onClick={() => router.back()}
+                        onClick={() => router.push('/')}
                         className="p-2 -ml-2 text-surface-600"
                     >
                         <ArrowLeft className="w-5 h-5" />

@@ -846,3 +846,211 @@ a,
 .rotate-y-180 {
   transform: rotateY(180deg);
 }
+
+/* ===== NATIVE ANDROID FEEL ===== */
+
+/* Prevent text selection during swipes/interactions */
+button,
+a,
+[role="button"],
+.touch-none {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Allow text selection only in content areas */
+p,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Native momentum scrolling */
+html,
+body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+}
+
+/* Scrollable containers - native feel */
+.scroll-container,
+main,
+[class*="overflow-y-auto"],
+[class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+/* Disable browser zoom/pinch on mobile */
+html {
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* Touch action for interactive elements */
+button,
+a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Swipeable elements - prevent text selection during drag */
+.swipeable,
+[data-swipeable="true"] {
+  touch-action: pan-y pinch-zoom;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Android ripple effect */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.ripple:active::after {
+  opacity: 1;
+  transform: scale(2.5);
+  transition: transform 0.2s, opacity 0.1s;
+}
+
+/* Dark mode ripple */
+.dark .ripple::after {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+}
+
+/* Touch feedback - scale down on press */
+.touch-scale {
+  transition: transform 0.1s ease-out;
+}
+
+.touch-scale:active {
+  transform: scale(0.97);
+}
+
+/* Bottom sheet - swipe gesture areas */
+.bottom-sheet-handle {
+  width: 32px;
+  height: 4px;
+  background: rgba(128, 128, 128, 0.4);
+  border-radius: 2px;
+  margin: 8px auto 4px;
+}
+
+/* Swipeable modal backdrop */
+.swipe-backdrop {
+  touch-action: none;
+}
+
+/* Cards/modals - native shadow on Android */
+.card-elevated {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.dark .card-elevated {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Prevent horizontal scroll/bounce */
+body {
+  overflow-x: hidden;
+}
+
+/* Input fields - native feel */
+input,
+textarea,
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 12px;
+}
+
+/* Focus states - Android style */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--color-primary-500) / 0.3);
+}
+
+/* Prevent iOS zoom on input focus */
+@media screen and (max-width: 768px) {
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe area insets for notches */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Loading skeleton - native shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+      hsl(var(--color-surface-100)) 25%,
+      hsl(var(--color-surface-200)) 50%,
+      hsl(var(--color-surface-100)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
